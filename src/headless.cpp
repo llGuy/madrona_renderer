@@ -30,7 +30,7 @@ using namespace madrona;
 
 int main(int argc, char *argv[])
 {
-    using namespace madEscape;
+    using namespace madRender;
 
     run::HeadlessRunArgs args = run::parseHeadlessArgs(argc, argv);
 
@@ -49,13 +49,11 @@ int main(int argc, char *argv[])
         .execMode = exec_mode,
         .gpuID = 0,
         .numWorlds = (uint32_t)num_worlds,
-        .autoReset = false,
         .enableBatchRenderer = enable_batch_renderer,
         .batchRenderViewWidth = output_resolution,
         .batchRenderViewHeight = output_resolution,
         .raycastOutputResolution = output_resolution,
         .headlessMode = true,
-        .glbPath = glb_path
     });
 
     auto start = std::chrono::system_clock::now();

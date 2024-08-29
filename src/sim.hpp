@@ -6,7 +6,6 @@
 #include <madrona/custom_context.hpp>
 #include <madrona/rand.hpp>
 
-#include "consts.hpp"
 #include "types.hpp"
 #include "madrona/mesh_bvh.hpp"
 
@@ -39,18 +38,7 @@ enum class TaskGraphID : uint32_t {
 // This is used for generic rendering objects
 using SimObject = uint32_t;
 
-struct World {
-    uint32_t numInstances;
-    uint32_t instancesOffset;
-
-    uint32_t numCameras;
-    uint32_t camerasOffset;
-
-    madrona::math::Vector3 center;
-    float randomization;
-};
-
-struct Camera {
+struct ImportedCamera {
     madrona::math::Vector3 position;
     madrona::math::Quat rotation;
 };
@@ -68,27 +56,24 @@ struct TimeSingleton {
 // in this class in order to ensure efficient access patterns.
 struct Sim : public madrona::WorldBase {
     struct Config {
-        bool autoReset;
-        RandKey initRandKey;
         const madrona::render::RenderECSBridge *renderBridge;
 
-        uint32_t numObjects;
         uint32_t numImportedInstances;
         ImportedInstance *importedInstances;
 
-        madrona::math::Vector2 sceneCenter;
-
-        uint32_t numUniqueScenes;
-        UniqueScene *uniqueScenes;
+        uint32_t numImportedCameras;
+        ImportedCamera *importedCameras;
 
         uint32_t numWorlds;
-
-        uint32_t numAgents;
-
-        bool mergeAll;
     };
 
-    struct WorldInit {};
+    struct WorldInit {
+        uint32_t numInstances;
+        uint32_t instancesOffset;
+
+        uint32_t numCameras;
+        uint32_t camerasOffset;
+    };
 
     static void registerTypes(madrona::ECSRegistry &registry,
                               const Config &cfg);
@@ -99,16 +84,6 @@ struct Sim : public madrona::WorldBase {
     Sim(Engine &ctx,
         const Config &cfg,
         const WorldInit &);
-
-    madrona::RandKey initRandKey;
-    madrona::RNG rng;
-
-    ImportedInstance *importedInstances;
-    uint32_t numImportedInstances;
-
-    madrona::math::Vector2 worldCenter;
-
-    madrona::Entity agent;
 };
 
 class Engine : public ::madrona::CustomContext<Engine, Sim> {

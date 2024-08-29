@@ -13,8 +13,11 @@
 
 #include <stb_image_write.h>
 
+#include <madrona/math.hpp>
+
 using namespace madrona;
 using namespace madrona::viz;
+using namespace madrona::math;
 
 void transposeImage(char *output, 
                     const char *input,
@@ -32,11 +35,9 @@ void transposeImage(char *output,
 
 int main(int argc, char *argv[])
 {
-    using namespace madEscape;
+    using namespace madRender;
 
     run::ViewerRunArgs args = run::parseViewerArgs(argc, argv);
-
-    std::string glb_path = argv[args.argCounter];
 
     // "Batch renderer" refers to the rasterizer.
     bool enable_batch_renderer = (args.renderMode == run::RenderMode::Rasterizer);
@@ -50,13 +51,51 @@ int main(int argc, char *argv[])
     uint32_t output_resolution = args.batchRenderWidth;
     uint32_t num_worlds = args.numWorlds;
 
+
+
+    Manager::Config::RenderConfig rcfg;
+    { // Test this out
+        rcfg.assetPaths = (const char **)malloc(2 * sizeof(const char *));
+        rcfg.numAssetPaths = 2;
+
+        rcfg.assetPaths[0] = "/home/luc/Development/madrona_renderer/data/wall_render.obj";
+        rcfg.assetPaths[1] = "/home/luc/Development/madrona_renderer/data/plane.obj";
+
+        rcfg.importedInstances = (ImportedInstance *)malloc(2 * sizeof(ImportedInstance));
+        rcfg.numInstances = 2;
+
+        rcfg.importedInstances[0].position = Vector3{ 0.f, 0.f, 15.f };
+        rcfg.importedInstances[0].rotation = Quat::angleAxis(pi_d2, { 1.f, 0.f, 0.f });
+        rcfg.importedInstances[0].scale = Diag3x3{ 10.f, 10.f, 10.f };
+        rcfg.importedInstances[0].objectID = 0;
+
+        rcfg.importedInstances[1].position = Vector3 { 0.f, 0.f, 0.f };
+        rcfg.importedInstances[1].rotation = Quat::angleAxis(pi_d2, { 0.f, 0.f, 1.f });
+        rcfg.importedInstances[1].scale = Diag3x3{ 0.01f, 0.01f, 0.01f };
+        rcfg.importedInstances[1].objectID = 1;
+
+        rcfg.cameras = (ImportedCamera *)malloc(1 * sizeof(ImportedCamera));
+        rcfg.numCameras = 1;
+
+        rcfg.cameras[0].position = { -30.f, -30.f, 15.f };
+        rcfg.cameras[0].rotation = Quat::angleAxis(0.2f, { 1.f, 0.f, 1.f });
+
+        rcfg.worlds = (Sim::WorldInit *)malloc(num_worlds * sizeof(Sim::WorldInit));
+
+        for (int i = 0; i < num_worlds; ++i) {
+            rcfg.worlds[i].numInstances = 2;
+            rcfg.worlds[i].instancesOffset = 0;
+            rcfg.worlds[i].numCameras = 1;
+            rcfg.worlds[i].camerasOffset = 0;
+        }
+    }
+
+
     // Create the simulation manager
     Manager mgr({
         .execMode = madrona::ExecMode::CUDA,
         .gpuID = 0,
         .numWorlds = num_worlds,
-        .randSeed = 5,
-        .autoReset = false,
         .enableBatchRenderer = enable_batch_renderer,
         .batchRenderViewWidth = output_resolution,
         .batchRenderViewHeight = output_resolution,
@@ -64,11 +103,11 @@ int main(int argc, char *argv[])
         .extRenderDev = render_gpu.device(),
         .raycastOutputResolution = output_resolution,
         .headlessMode = false,
-        .glbPath = glb_path
+        .rcfg = rcfg,
     });
     float camera_move_speed = 10.f;
 
-    math::Vector3 initial_camera_position = { 0, consts::worldLength / 2.f, 30 };
+    math::Vector3 initial_camera_position = { 0, 0.f, 30 };
 
     math::Quat initial_camera_rotation =
         (math::Quat::angleAxis(-math::pi / 2.f, math::up) *
@@ -92,113 +131,6 @@ int main(int argc, char *argv[])
     [&mgr](CountT world_idx, CountT agent_idx,
            const Viewer::UserInput &input)
     {
-        using Key = Viewer::KeyboardKey;
-
-        int32_t x = 0;
-        int32_t y = 0;
-        int32_t r = 2;
-        int32_t g = 0;
-
-        bool shift_pressed = input.keyPressed(Key::Shift);
-
-        if (input.keyPressed(Key::W)) {
-            y += 1;
-        }
-        if (input.keyPressed(Key::S)) {
-            y -= 1;
-        }
-
-        if (input.keyPressed(Key::D)) {
-            x += 1;
-        }
-        if (input.keyPressed(Key::A)) {
-            x -= 1;
-        }
-
-        if (input.keyPressed(Key::Q)) {
-            r += shift_pressed ? 2 : 1;
-        }
-        if (input.keyPressed(Key::E)) {
-            r -= shift_pressed ? 2 : 1;
-        }
-
-        if (input.keyHit(Key::G)) {
-            g = 1;
-        }
-
-        int32_t move_amount;
-        if (x == 0 && y == 0) {
-            move_amount = 0;
-        } else if (shift_pressed) {
-            move_amount = consts::numMoveAmountBuckets - 1;
-        } else {
-            move_amount = 1;
-        }
-
-        int32_t move_angle;
-        if (x == 0 && y == 1) {
-            move_angle = 0;
-        } else if (x == 1 && y == 1) {
-            move_angle = 1;
-        } else if (x == 1 && y == 0) {
-            move_angle = 2;
-        } else if (x == 1 && y == -1) {
-            move_angle = 3;
-        } else if (x == 0 && y == -1) {
-            move_angle = 4;
-        } else if (x == -1 && y == -1) {
-            move_angle = 5;
-        } else if (x == -1 && y == 0) {
-            move_angle = 6;
-        } else if (x == -1 && y == 1) {
-            move_angle = 7;
-        } else {
-            move_angle = 0;
-        }
-
-        x = 1;
-        if (input.keyPressed(Key::W)) {
-            x = 2;
-        }
-        if (input.keyPressed(Key::S)) {
-            x = 0;
-        }
-
-        y = 1;
-        if (input.keyPressed(Key::D)) {
-            y = 2;
-        }
-        if (input.keyPressed(Key::A)) {
-            y = 0;
-        }
-
-        int rot=1;
-        if (input.keyPressed(Key::Q)) {
-            rot = 2;
-        }
-        if (input.keyPressed(Key::E)) {
-            rot = 0;
-        }
-
-        int vrot = 1;
-        if (input.keyPressed(Key::T)) {
-            vrot = 2;
-        }
-        if (input.keyPressed(Key::F)) {
-            vrot = 0;
-        }
-
-        int z = 1;
-        if (input.keyPressed(Key::O)) {
-            z = 2;
-        }
-
-        if (input.keyPressed(Key::L)) {
-            z = 0;
-        }
-
-        mgr.setAction(world_idx, agent_idx, move_amount, move_angle, 
-                r, g, x, y, z, rot, vrot);
     }, [&]() {
         mgr.step();
     }, [&]() {
