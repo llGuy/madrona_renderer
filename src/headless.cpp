@@ -46,13 +46,11 @@ int main(int argc, char *argv[])
     uint32_t output_resolution = args.batchRenderWidth;
 
     Manager mgr({
-        .execMode = exec_mode,
         .gpuID = 0,
         .numWorlds = (uint32_t)num_worlds,
-        .enableBatchRenderer = enable_batch_renderer,
+        .renderMode = (Manager::RenderMode)args.renderMode,
         .batchRenderViewWidth = output_resolution,
         .batchRenderViewHeight = output_resolution,
-        .raycastOutputResolution = output_resolution,
         .headlessMode = true,
     });
 

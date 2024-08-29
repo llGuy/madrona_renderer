@@ -17,16 +17,24 @@ namespace madRender {
 // for learning
 class Manager {
 public:
+    enum class RenderMode {
+        Rasterizer,
+        Raytracer
+    };
+
     struct Config {
-        madrona::ExecMode execMode; // CPU or CUDA
-        int gpuID; // Which GPU for CUDA backend?
-        uint32_t numWorlds; // Simulation batch size
-        bool enableBatchRenderer;
+        int gpuID;
+
+        uint32_t numWorlds;
+
+        RenderMode renderMode;
+
         uint32_t batchRenderViewWidth = 64;
         uint32_t batchRenderViewHeight = 64;
+
         madrona::render::APIBackend *extRenderAPI = nullptr;
         madrona::render::GPUDevice *extRenderDev = nullptr;
-        uint32_t raycastOutputResolution = 64;
+
         bool headlessMode = false;
 
         // Render config

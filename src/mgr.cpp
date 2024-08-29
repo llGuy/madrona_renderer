@@ -50,7 +50,8 @@ static inline Optional<RenderGPUState> initRenderGPUState(
     const Manager::Config &mgr_cfg)
 {
     if (!mgr_cfg.headlessMode) {
-        if (mgr_cfg.extRenderDev || !mgr_cfg.enableBatchRenderer) {
+        if (mgr_cfg.extRenderDev || 
+                mgr_cfg.renderMode != Manager::RenderMode::Rasterizer) {
             return Optional<RenderGPUState>::none();
         }
     }
@@ -72,12 +73,14 @@ static inline Optional<render::RenderManager> initRenderManager(
     uint32_t max_instances_per_world,
     uint32_t max_views_per_world)
 {
-    if (mgr_cfg.headlessMode && !mgr_cfg.enableBatchRenderer) {
+    if (mgr_cfg.headlessMode && 
+            mgr_cfg.renderMode != Manager::RenderMode::Rasterizer) {
         return Optional<render::RenderManager>::none();
     }
 
     if (!mgr_cfg.headlessMode) {
-        if (!mgr_cfg.extRenderDev && !mgr_cfg.enableBatchRenderer) {
+        if (!mgr_cfg.extRenderDev && 
+                mgr_cfg.renderMode != Manager::RenderMode::Rasterizer) {
             return Optional<render::RenderManager>::none();
         }
     }
@@ -94,14 +97,15 @@ static inline Optional<render::RenderManager> initRenderManager(
     }
 
     return render::RenderManager(render_api, render_dev, {
-        .enableBatchRenderer = mgr_cfg.enableBatchRenderer,
+        .enableBatchRenderer =
+            (mgr_cfg.renderMode == Manager::RenderMode::Rasterizer),
         .renderMode = render::RenderManager::Config::RenderMode::RGBD,
         .agentViewWidth = mgr_cfg.batchRenderViewWidth,
         .agentViewHeight = mgr_cfg.batchRenderViewHeight,
         .numWorlds = mgr_cfg.numWorlds,
         .maxViewsPerWorld = max_views_per_world,
         .maxInstancesPerWorld = max_instances_per_world,
-        .execMode = mgr_cfg.execMode,
+        .execMode = ExecMode::CUDA,
         .voxelCfg = {},
     });
 }
@@ -117,12 +121,11 @@ struct Manager::Impl {
 
     inline Impl(const Manager::Config &mgr_cfg,
                 Optional<RenderGPUState> &&render_gpu_state,
-                Optional<render::RenderManager> &&render_mgr,
-                uint32_t raycast_output_resolution)
+                Optional<render::RenderManager> &&render_mgr)
         : cfg(mgr_cfg),
           renderGPUState(std::move(render_gpu_state)),
           renderMgr(std::move(render_mgr)),
-          raycastOutputResolution(raycast_output_resolution),
+          raycastOutputResolution(mgr_cfg.batchRenderViewWidth),
           headlessMode(mgr_cfg.headlessMode)
     {}
 
@@ -152,8 +155,7 @@ struct Manager::CUDAImpl final : Manager::Impl {
                    MWCudaLaunchGraph &&render_setup_graph,
                    Optional<MWCudaLaunchGraph> &&render_graph)
         : Impl(mgr_cfg,
-               std::move(render_gpu_state), std::move(render_mgr),
-               mgr_cfg.raycastOutputResolution),
+               std::move(render_gpu_state), std::move(render_mgr)),
           gpuExec(std::move(gpu_exec)),
           stepGraph(std::move(step_graph)),
           renderSetupGraph(std::move(render_setup_graph)),
@@ -243,139 +245,132 @@ Manager::Impl * Manager::Impl::init(
 {
     Sim::Config sim_cfg;
 
-    switch (mgr_cfg.execMode) {
-    case ExecMode::CUDA: {
-#ifdef MADRONA_CUDA_SUPPORT
-        CUcontext cu_ctx = MWCudaExecutor::initCUDA(mgr_cfg.gpuID);
-
-        Optional<RenderGPUState> render_gpu_state = initRenderGPUState(mgr_cfg);
-
-        uint32_t max_instances_per_world = 1, max_views_per_world = 1;
-        { // Calculate the two above
-            for (int i = 0; i < mgr_cfg.numWorlds; ++i) {
-                max_instances_per_world = std::max(
-                        max_instances_per_world,
-                        mgr_cfg.rcfg.worlds[i].numInstances);
-                max_views_per_world = std::max(
-                        max_views_per_world,
-                        mgr_cfg.rcfg.worlds[i].numCameras);
-            }
-        }
-
-        Optional<render::RenderManager> render_mgr = initRenderManager(
-                mgr_cfg, render_gpu_state,
-                max_instances_per_world,
-                max_views_per_world);
-
-        auto imported_assets = loadRenderObjects(
-                mgr_cfg.rcfg.assetPaths,
-                mgr_cfg.rcfg.numAssetPaths,
-                render_mgr);
-
-        // Allocate GPU memory for the instances
-        sim_cfg.numImportedInstances = mgr_cfg.rcfg.numInstances;
-        sim_cfg.importedInstances = (ImportedInstance *)cu::allocGPU(
-                sizeof(ImportedInstance) * mgr_cfg.rcfg.numInstances);
-
-        // Allocate GPU memory for the cameras
-        sim_cfg.numImportedCameras = mgr_cfg.rcfg.numCameras;
-        sim_cfg.importedCameras = (ImportedCamera *)cu::allocGPU(
-                sizeof(ImportedCamera) * mgr_cfg.rcfg.numCameras);
-
-        sim_cfg.numWorlds = mgr_cfg.numWorlds;
-
-        // Copy the relevant stuff to the GPU.
-        REQ_CUDA(cudaMemcpy(sim_cfg.importedInstances, 
-                    mgr_cfg.rcfg.importedInstances,
-                    sizeof(ImportedInstance) *
-                        mgr_cfg.rcfg.numInstances,
-                    cudaMemcpyHostToDevice));
-
-        REQ_CUDA(cudaMemcpy(sim_cfg.importedCameras, 
-                    mgr_cfg.rcfg.cameras,
-                    sizeof(ImportedCamera) *
-                        mgr_cfg.rcfg.numCameras,
-                    cudaMemcpyHostToDevice));
-
-
-        if (render_mgr.has_value()) {
-            sim_cfg.renderBridge = render_mgr->bridge();
-        } else {
-            sim_cfg.renderBridge = nullptr;
-        }
-
-        HeapArray<Sim::WorldInit> world_inits(mgr_cfg.numWorlds);
-        memcpy(world_inits.data(), mgr_cfg.rcfg.worlds,
-               sizeof(Sim::WorldInit) * mgr_cfg.numWorlds);
-
-        uint32_t raycast_output_resolution = mgr_cfg.raycastOutputResolution;
-        CudaBatchRenderConfig::RenderMode rt_render_mode;
-
-        // If the rasterizer is enabled, disable the raycaster
-        if (mgr_cfg.enableBatchRenderer) {
-            raycast_output_resolution = 0;
-        } else {
-            rt_render_mode = CudaBatchRenderConfig::RenderMode::RGBD;
-        }
-
-        MWCudaExecutor gpu_exec({
-            .worldInitPtr = world_inits.data(),
-            .numWorldInitBytes = sizeof(Sim::WorldInit),
-            .userConfigPtr = (void *)&sim_cfg,
-            .numUserConfigBytes = sizeof(Sim::Config),
-            .numWorldDataBytes = sizeof(Sim),
-            .worldDataAlignment = alignof(Sim),
-            .numWorlds = mgr_cfg.numWorlds,
-            .numTaskGraphs = (uint32_t)TaskGraphID::NumTaskGraphs,
-            .numExportedBuffers = (uint32_t)ExportID::NumExports, 
-        }, {
-            { RENDERER_SRC_LIST },
-            { RENDERER_COMPILE_FLAGS },
-            CompileConfig::OptMode::LTO,
-        }, cu_ctx, 
-        mgr_cfg.enableBatchRenderer ? Optional<madrona::CudaBatchRenderConfig>::none() : 
-            madrona::CudaBatchRenderConfig {
-                .renderMode = rt_render_mode,
-                .geoBVHData = render::AssetProcessor::makeBVHData(imported_assets.objects),
-                .materialData = render::AssetProcessor::initMaterialData(
-                        imported_assets.materials.data(), imported_assets.materials.size(),
-                        imported_assets.textures.data(), imported_assets.textures.size()),
-                .renderResolution = raycast_output_resolution,
-                .nearPlane = 0.1f,
-                .farPlane = 1000.f
-        });
-
-        MWCudaLaunchGraph step_graph = gpu_exec.buildLaunchGraph(
-                TaskGraphID::Step);
-        MWCudaLaunchGraph render_setup_graph = gpu_exec.buildLaunchGraph(
-                TaskGraphID::Render);
-
-        Optional<MWCudaLaunchGraph> render_graph = [&]() -> Optional<MWCudaLaunchGraph> {
-            if (mgr_cfg.enableBatchRenderer) {
-                return Optional<MWCudaLaunchGraph>::none();
-            } else {
-                return gpu_exec.buildRenderGraph();
-            }
-        } ();
-
-        return new CUDAImpl {
-            mgr_cfg,
-            std::move(render_gpu_state),
-            std::move(render_mgr),
-            std::move(gpu_exec),
-            std::move(step_graph),
-            std::move(render_setup_graph),
-            std::move(render_graph)
-        };
-#else
-        FATAL("Madrona was not compiled with CUDA support");
+#ifndef MADRONA_CUDA_SUPPORT
+    static_assert(false, "Cuda support required");
 #endif
-    } break;
-    case ExecMode::CPU: {
-        FATAL("This environment doesn't support CPU backend");
-    } break;
-    default: MADRONA_UNREACHABLE();
+
+    CUcontext cu_ctx = MWCudaExecutor::initCUDA(mgr_cfg.gpuID);
+
+    Optional<RenderGPUState> render_gpu_state = initRenderGPUState(mgr_cfg);
+
+    uint32_t max_instances_per_world = 1, max_views_per_world = 1;
+    { // Calculate the two above
+        for (int i = 0; i < mgr_cfg.numWorlds; ++i) {
+            max_instances_per_world = std::max(
+                    max_instances_per_world,
+                    mgr_cfg.rcfg.worlds[i].numInstances);
+            max_views_per_world = std::max(
+                    max_views_per_world,
+                    mgr_cfg.rcfg.worlds[i].numCameras);
+        }
     }
+
+    Optional<render::RenderManager> render_mgr = initRenderManager(
+            mgr_cfg, render_gpu_state,
+            max_instances_per_world,
+            max_views_per_world);
+
+    auto imported_assets = loadRenderObjects(
+            mgr_cfg.rcfg.assetPaths,
+            mgr_cfg.rcfg.numAssetPaths,
+            render_mgr);
+
+    // Allocate GPU memory for the instances
+    sim_cfg.numImportedInstances = mgr_cfg.rcfg.numInstances;
+    sim_cfg.importedInstances = (ImportedInstance *)cu::allocGPU(
+            sizeof(ImportedInstance) * mgr_cfg.rcfg.numInstances);
+
+    // Allocate GPU memory for the cameras
+    sim_cfg.numImportedCameras = mgr_cfg.rcfg.numCameras;
+    sim_cfg.importedCameras = (ImportedCamera *)cu::allocGPU(
+            sizeof(ImportedCamera) * mgr_cfg.rcfg.numCameras);
+
+    sim_cfg.numWorlds = mgr_cfg.numWorlds;
+
+    // Copy the relevant stuff to the GPU.
+    REQ_CUDA(cudaMemcpy(sim_cfg.importedInstances, 
+                mgr_cfg.rcfg.importedInstances,
+                sizeof(ImportedInstance) *
+                    mgr_cfg.rcfg.numInstances,
+                cudaMemcpyHostToDevice));
+
+    REQ_CUDA(cudaMemcpy(sim_cfg.importedCameras, 
+                mgr_cfg.rcfg.cameras,
+                sizeof(ImportedCamera) *
+                    mgr_cfg.rcfg.numCameras,
+                cudaMemcpyHostToDevice));
+
+
+    if (render_mgr.has_value()) {
+        sim_cfg.renderBridge = render_mgr->bridge();
+    } else {
+        sim_cfg.renderBridge = nullptr;
+    }
+
+    HeapArray<Sim::WorldInit> world_inits(mgr_cfg.numWorlds);
+    memcpy(world_inits.data(), mgr_cfg.rcfg.worlds,
+           sizeof(Sim::WorldInit) * mgr_cfg.numWorlds);
+
+    uint32_t raycast_output_resolution = mgr_cfg.batchRenderViewWidth;
+    CudaBatchRenderConfig::RenderMode rt_render_mode;
+
+    // If the rasterizer is enabled, disable the raycaster
+    if (mgr_cfg.renderMode == Manager::RenderMode::Rasterizer) {
+        raycast_output_resolution = 0;
+    } else {
+        rt_render_mode = CudaBatchRenderConfig::RenderMode::RGBD;
+    }
+
+    MWCudaExecutor gpu_exec({
+        .worldInitPtr = world_inits.data(),
+        .numWorldInitBytes = sizeof(Sim::WorldInit),
+        .userConfigPtr = (void *)&sim_cfg,
+        .numUserConfigBytes = sizeof(Sim::Config),
+        .numWorldDataBytes = sizeof(Sim),
+        .worldDataAlignment = alignof(Sim),
+        .numWorlds = mgr_cfg.numWorlds,
+        .numTaskGraphs = (uint32_t)TaskGraphID::NumTaskGraphs,
+        .numExportedBuffers = (uint32_t)ExportID::NumExports, 
+    }, {
+        { RENDERER_SRC_LIST },
+        { RENDERER_COMPILE_FLAGS },
+        CompileConfig::OptMode::LTO,
+    }, cu_ctx, 
+    (mgr_cfg.renderMode == Manager::RenderMode::Rasterizer) ?
+        Optional<madrona::CudaBatchRenderConfig>::none() : 
+        madrona::CudaBatchRenderConfig {
+            .renderMode = rt_render_mode,
+            .geoBVHData = render::AssetProcessor::makeBVHData(imported_assets.objects),
+            .materialData = render::AssetProcessor::initMaterialData(
+                    imported_assets.materials.data(), imported_assets.materials.size(),
+                    imported_assets.textures.data(), imported_assets.textures.size()),
+            .renderResolution = raycast_output_resolution,
+            .nearPlane = 0.1f,
+            .farPlane = 1000.f
+    });
+
+    MWCudaLaunchGraph step_graph = gpu_exec.buildLaunchGraph(
+            TaskGraphID::Step);
+    MWCudaLaunchGraph render_setup_graph = gpu_exec.buildLaunchGraph(
+            TaskGraphID::Render);
+
+    Optional<MWCudaLaunchGraph> render_graph = [&]() -> Optional<MWCudaLaunchGraph> {
+        if (mgr_cfg.renderMode == Manager::RenderMode::Rasterizer) {
+            return Optional<MWCudaLaunchGraph>::none();
+        } else {
+            return gpu_exec.buildRenderGraph();
+        }
+    } ();
+
+    return new CUDAImpl {
+        mgr_cfg,
+        std::move(render_gpu_state),
+        std::move(render_mgr),
+        std::move(gpu_exec),
+        std::move(step_graph),
+        std::move(render_setup_graph),
+        std::move(render_graph)
+    };
 }
 
 Manager::Manager(const Config &cfg)
@@ -407,7 +402,7 @@ void Manager::step()
     impl_->run();
 
     if (impl_->headlessMode) {
-        if (impl_->cfg.enableBatchRenderer) {
+        if (impl_->cfg.renderMode == Manager::RenderMode::Rasterizer) {
             impl_->renderMgr->readECS();
         }
     } else {
@@ -416,7 +411,7 @@ void Manager::step()
         }
     }
 
-    if (impl_->cfg.enableBatchRenderer) {
+    if (impl_->cfg.renderMode == Manager::RenderMode::Rasterizer) {
         impl_->renderMgr->batchRender();
     }
 }

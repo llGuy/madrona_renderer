@@ -39,9 +39,6 @@ int main(int argc, char *argv[])
 
     run::ViewerRunArgs args = run::parseViewerArgs(argc, argv);
 
-    // "Batch renderer" refers to the rasterizer.
-    bool enable_batch_renderer = (args.renderMode == run::RenderMode::Rasterizer);
-
     WindowManager wm {};
     WindowHandle window = wm.makeWindow("Habitat Viewer", 
             args.windowWidth, args.windowHeight);
@@ -93,15 +90,13 @@ int main(int argc, char *argv[])
 
     // Create the simulation manager
     Manager mgr({
-        .execMode = madrona::ExecMode::CUDA,
         .gpuID = 0,
         .numWorlds = num_worlds,
-        .enableBatchRenderer = enable_batch_renderer,
+        .renderMode = (Manager::RenderMode)args.renderMode,
         .batchRenderViewWidth = output_resolution,
         .batchRenderViewHeight = output_resolution,
         .extRenderAPI = wm.gpuAPIManager().backend(),
         .extRenderDev = render_gpu.device(),
-        .raycastOutputResolution = output_resolution,
         .headlessMode = false,
         .rcfg = rcfg,
     });

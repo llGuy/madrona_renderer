@@ -6,8 +6,8 @@
 namespace run {
 
 enum class RenderMode {
-    Raycaster,
-    Rasterizer
+    Rasterizer,
+    Raycaster
 };
 
 struct ViewerRunArgs {

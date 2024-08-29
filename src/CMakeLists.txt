@@ -101,3 +101,11 @@ target_link_libraries(renderer_headless
     PUBLIC 
         madrona_mw_core renderer_mgr madrona_viz madrona_cuda stb run_common
 )
+
+madrona_python_module(madrona_renderer
+    src/bindings.cpp
+)
+
+target_link_libraries(madrona_renderer PUBLIC
+    renderer_mgr madrona_python_utils
+)
