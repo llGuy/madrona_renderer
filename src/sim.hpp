@@ -11,7 +11,7 @@
 #include "madrona/mesh_bvh.hpp"
 
 
-namespace madEscape {
+namespace madRender {
 
 class Engine;
 
@@ -39,11 +39,20 @@ enum class TaskGraphID : uint32_t {
 // This is used for generic rendering objects
 using SimObject = uint32_t;
 
-struct UniqueScene {
+struct World {
     uint32_t numInstances;
     uint32_t instancesOffset;
-    uint32_t numObjects;
+
+    uint32_t numCameras;
+    uint32_t camerasOffset;
+
     madrona::math::Vector3 center;
+    float randomization;
+};
+
+struct Camera {
+    madrona::math::Vector3 position;
+    madrona::math::Quat rotation;
 };
 
 struct TimeSingleton {

@@ -37,7 +37,7 @@ using namespace madrona::phys;
 using namespace madrona::render;
 using namespace madrona::py;
 
-namespace madEscape {
+namespace madRender {
 
 struct RenderGPUState {
     render::APILibHandle apiLib;
@@ -107,8 +107,10 @@ static inline Optional<render::RenderManager> initRenderManager(
 struct Manager::Impl {
     Config cfg;
     Action *agentActionsBuffer;
+
     Optional<RenderGPUState> renderGPUState;
     Optional<render::RenderManager> renderMgr;
+
     uint32_t raycastOutputResolution;
     bool headlessMode;
 
@@ -470,6 +472,24 @@ void Manager::step()
 
     if (impl_->cfg.enableBatchRenderer) {
         impl_->renderMgr->batchRender();
+    }
+}
+
+void Manager::configureAssets(const char **paths,
+                              size_t num_paths)
+{
+    render_cfg_.paths.resize(num_paths);
+    for (int i = 0; i < num_paths; ++i) {
+        render_cfg_.paths[i] = std::string(paths[i]);
+    }
+}
+
+void Manager::configureAssets(const char **paths,
+                              size_t num_paths)
+{
+    render_cfg_.paths.resize(num_paths);
+    for (int i = 0; i < num_paths; ++i) {
+        render_cfg_.paths[i] = std::string(paths[i]);
     }
 }
 

@@ -15,7 +15,7 @@ using namespace madrona::math;
 
 namespace RenderingSystem = madrona::render::RenderingSystem;
 
-namespace madEscape {
+namespace madRender {
 
 inline Quat eulerToQuat(float yaw, float pitch) {
     float ex = pitch;

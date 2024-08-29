@@ -1,3 +1,5 @@
+#include "sim.hpp"
+
 #include <memory>
 
 #include <madrona/py/utils.hpp>
@@ -5,7 +7,7 @@
 
 #include <madrona/render/render_mgr.hpp>
 
-namespace madEscape {
+namespace madRender {
 
 // The Manager class encapsulates the linkage between the outside training
 // code and the internal simulation state (src/sim.hpp / src/sim.cpp)
@@ -19,22 +21,31 @@ public:
         madrona::ExecMode execMode; // CPU or CUDA
         int gpuID; // Which GPU for CUDA backend?
         uint32_t numWorlds; // Simulation batch size
-        uint32_t randSeed; // Seed for random world gen
-        bool autoReset; // Immediately generate new world on episode end
-        bool enableBatchRenderer;
         uint32_t batchRenderViewWidth = 64;
         uint32_t batchRenderViewHeight = 64;
         madrona::render::APIBackend *extRenderAPI = nullptr;
         madrona::render::GPUDevice *extRenderDev = nullptr;
         uint32_t raycastOutputResolution = 64;
         bool headlessMode = false;
-        std::string glbPath;
     };
 
     Manager(const Config &cfg);
     ~Manager();
 
     void step();
+
+    void configureAssets(const char **paths,
+                         size_t num_paths);
+
+    // This is just going to be a big list of instances to render
+    void configureInstances(
+            const madRender::ImportedInstance *imported_instances,
+            size_t num_instances);
+
+    void configureCameras(const madRender::Camera *cameras,
+                          size_t num_cameras);
+
+    void configureWorlds(const madRender::World *worlds);
 
     // These functions export Tensor objects that link the ECS
     // simulation state to the python bindings / PyTorch tensors (src/bindings.cpp)
@@ -62,11 +73,26 @@ public:
     uint32_t numAgents;
 
 private:
+    struct RenderConfig {
+        // Paths to load assets from
+        std::vector<std::string> paths;
+
+        ImportedInstance *importedInstancesGPU;
+        size_t numImportedInstances;
+
+        Camera *camerasGPU;
+        size_t numCameras;
+
+        World *worldsGPU;
+        size_t numWorlds;
+    };
+
     struct Impl;
-    struct CPUImpl;
     struct CUDAImpl;
 
     std::unique_ptr<Impl> impl_;
+
+    RenderConfig render_cfg_;
 };
 
 }
