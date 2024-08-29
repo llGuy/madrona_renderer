@@ -103,7 +103,7 @@ target_link_libraries(renderer_headless
 )
 
 madrona_python_module(madrona_renderer
-    src/bindings.cpp
+    bindings.cpp
 )
 
 target_link_libraries(madrona_renderer PUBLIC

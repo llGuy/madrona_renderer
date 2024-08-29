@@ -4,6 +4,7 @@
 #include <madrona/py/bindings.hpp>
 
 #include <nanobind/stl/array.h>
+#include <nanobind/stl/vector.h>
 
 using namespace madrona;
 using namespace madrona::math;
@@ -15,7 +16,7 @@ namespace madRender {
 NB_MODULE(madrona_renderer, m) {
     madrona::py::setupMadronaSubmodule(m);
 
-    nb::enum_<RenderMode>(m, "RenderMode")
+    nb::enum_<Manager::RenderMode>(m, "RenderMode")
         .value("Rasterizer", Manager::RenderMode::Rasterizer)
         .value("Raytracer", Manager::RenderMode::Raytracer)
     ;
@@ -32,7 +33,10 @@ NB_MODULE(madrona_renderer, m) {
                 .scale = { scale[0], scale[1], scale[2] },
                 .objectID = (int32_t)object_id
             };
-        })
+        }, nb::arg("position"),
+           nb::arg("rotation"),
+           nb::arg("scale"),
+           nb::arg("object_id"))
     ;
 
     nb::class_<ImportedCamera>(m, "ImportedCamera")
@@ -43,7 +47,8 @@ NB_MODULE(madrona_renderer, m) {
                 .position = { pos[0], pos[1], pos[2] },
                 .rotation = { rot[0], rot[1], rot[2], rot[3] }
             };
-        })
+        }, nb::arg("position"),
+           nb::arg("rotation"))
     ;
 
     nb::class_<Sim::WorldInit>(m, "WorldInit")
@@ -55,10 +60,13 @@ NB_MODULE(madrona_renderer, m) {
             new (self) Sim::WorldInit {
                 .numInstances = (uint32_t)num_instances,
                 .instancesOffset = (uint32_t)instance_offset,
-                .numCameras = (uint32_t)numCameras,
-                .camerasOffset = (uint32_t)camerasOffset
+                .numCameras = (uint32_t)num_cameras,
+                .camerasOffset = (uint32_t)camera_offset
             };
-        })
+        }, nb::arg("num_instances"),
+           nb::arg("instance_offset"),
+           nb::arg("num_cameras"),
+           nb::arg("camera_offset"))
     ;
 
     nb::class_<Manager>(m, "MadronaRenderer")
@@ -82,8 +90,8 @@ NB_MODULE(madrona_renderer, m) {
                 .gpuID = (int)gpu_id,
                 .numWorlds = (uint32_t)num_worlds,
                 .renderMode = render_mode,
-                .batchRenderViewWidth = batch_render_view_width,
-                .batchRenderViewHeight = batch_render_view_height,
+                .batchRenderViewWidth = (uint32_t)batch_render_view_width,
+                .batchRenderViewHeight = (uint32_t)batch_render_view_height,
                 .rcfg = {
                     .assetPaths = cstrs.data(),
                     .numAssetPaths = (uint32_t)cstrs.size(),
