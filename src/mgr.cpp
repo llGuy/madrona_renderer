@@ -130,8 +130,8 @@ struct Manager::Impl {
           headlessMode(mgr_cfg.headlessMode)
     {
         totalNumCameras=0;
-        for (int i=0;i<mgr_cfg.numWorlds;i++)
-        {
+
+        for (int i = 0; i < mgr_cfg.numWorlds; i++) {
             totalNumCameras+=mgr_cfg.rcfg.worlds[i].numCameras;
         }
     }
@@ -424,62 +424,58 @@ void Manager::step()
 }
 Tensor Manager::rgbTensor() const
 {
-    const uint8_t *rgb_ptr = impl_->renderMgr->batchRendererRGBOut();
+    if (impl_->cfg.renderMode == RenderMode::Rasterizer) {
+        const uint8_t *rgb_ptr = impl_->renderMgr->batchRendererRGBOut();
 
-    return Tensor((void*)rgb_ptr, TensorElementType::UInt8, {
-        impl_->totalNumCameras,
-        impl_->cfg.batchRenderViewHeight,
-        impl_->cfg.batchRenderViewWidth,
-        4,
-    }, impl_->cfg.gpuID);
+        return Tensor((void*)rgb_ptr, TensorElementType::UInt8, {
+            impl_->totalNumCameras,
+            impl_->cfg.batchRenderViewHeight,
+            impl_->cfg.batchRenderViewWidth,
+            4,
+        }, impl_->cfg.gpuID);
+    } else {
+        uint32_t pixels_per_view = impl_->raycastOutputResolution *
+            impl_->raycastOutputResolution;
+        return impl_->exportTensor(ExportID::RaycastRGB,
+                                   TensorElementType::UInt8,
+                                   {
+                                       impl_->totalNumCameras,
+                                       pixels_per_view * 4, //4 components: rgba
+                                   });
+    }
 }
 
 Tensor Manager::depthTensor() const
 {
-    return Tensor((void *)depthCudaPtr(), TensorElementType::Float32, {
-        impl_->totalNumCameras,
-        impl_->cfg.batchRenderViewHeight,
-        impl_->cfg.batchRenderViewWidth,
-        1,
-    }, impl_->cfg.gpuID);
+    if (impl_->cfg.renderMode == RenderMode::Rasterizer) {
+        const float *depth_ptr = impl_->renderMgr->batchRendererDepthOut();
+
+        return Tensor((void*)depth_ptr, TensorElementType::Float32, {
+            impl_->totalNumCameras,
+            impl_->cfg.batchRenderViewHeight,
+            impl_->cfg.batchRenderViewWidth,
+            1,
+        }, impl_->cfg.gpuID);
+    } else {
+        uint32_t pixels_per_view = impl_->raycastOutputResolution *
+            impl_->raycastOutputResolution;
+        return impl_->exportTensor(ExportID::RaycastDepth,
+                                   TensorElementType::Float32,
+                                   {
+                                       impl_->totalNumCameras,
+                                       pixels_per_view,
+                                   });
+    }
 }
 
 uint64_t Manager::rgbCudaPtr() const
 {
-    return (uint64_t) ((impl_->cfg.renderMode == Manager::RenderMode::Rasterizer)?
-    rgbTensor().devicePtr() : raycastRGBTensor().devicePtr());
+    return (uint64_t)rgbTensor().devicePtr();
 }
 
 uint64_t Manager::depthCudaPtr() const
 {
-    return (uint64_t) ((impl_->cfg.renderMode == Manager::RenderMode::Rasterizer)?
-    depthTensor().devicePtr() : raycastDepthTensor().devicePtr());
-}
-
-
-
-Tensor Manager::raycastRGBTensor() const
-{
-    uint32_t pixels_per_view = impl_->raycastOutputResolution *
-        impl_->raycastOutputResolution;
-    return impl_->exportTensor(ExportID::RaycastRGB,
-                               TensorElementType::UInt8,
-                               {
-                                   impl_->totalNumCameras,
-                                   pixels_per_view * 4, //4 components: rgba
-                               });
-}
-
-Tensor Manager::raycastDepthTensor() const
-{
-    uint32_t pixels_per_view = impl_->raycastOutputResolution *
-        impl_->raycastOutputResolution;
-    return impl_->exportTensor(ExportID::RaycastDepth,
-                               TensorElementType::Float32,
-                               {
-                                   impl_->totalNumCameras,
-                                   pixels_per_view,
-                               });
+    return (uint64_t)depthTensor().devicePtr();
 }
 
 render::RenderManager & Manager::getRenderManager()

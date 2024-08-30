@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
     run::ViewerRunArgs args = run::parseViewerArgs(argc, argv);
 
     WindowManager wm {};
-    WindowHandle window = wm.makeWindow("Habitat Viewer", 
+    WindowHandle window = wm.makeWindow("Renderer Viewer", 
             args.windowWidth, args.windowHeight);
 
     render::GPUHandle render_gpu = wm.initGPU(0, { window.get() });
@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
             print_ptr = nullptr;
 #endif
 
-            char *raycast_tensor = (char *)(mgr.raycastRGBTensor().devicePtr());
+            char *raycast_tensor = (char *)(mgr.rgbTensor().devicePtr());
 
             uint32_t bytes_per_image = 4 * output_resolution * output_resolution;
 
