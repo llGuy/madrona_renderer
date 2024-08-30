@@ -19,6 +19,28 @@ using namespace madrona;
 using namespace madrona::viz;
 using namespace madrona::math;
 
+static constexpr ImU32 kRandomColorTable[] = {
+    IM_COL32(0, 0, 0, 255),
+    IM_COL32(170, 0, 0, 255),
+
+    IM_COL32(0, 170, 170, 255),
+
+    IM_COL32(0, 0, 170, 255),
+    IM_COL32(170, 0, 170, 255),
+
+    IM_COL32(170, 170, 0, 255),
+    IM_COL32(0, 170, 0, 255),
+    IM_COL32(170, 170, 170, 255),
+    IM_COL32(85, 85, 85, 255),
+    IM_COL32(255, 85, 85, 255),
+    IM_COL32(85, 255, 85, 255),
+    IM_COL32(85, 85, 255, 255),
+    IM_COL32(85, 255, 255, 255),
+    IM_COL32(255, 255, 85, 255),
+    IM_COL32(255, 85, 255, 255),
+    IM_COL32(255, 255, 255, 255)
+};
+
 void transposeImage(char *output, 
                     const char *input,
                     uint32_t res)
@@ -75,7 +97,7 @@ int main(int argc, char *argv[])
         rcfg.numCameras = 1;
 
         rcfg.cameras[0].position = { -30.f, -30.f, 15.f };
-        rcfg.cameras[0].rotation = Quat::angleAxis(0.2f, { 1.f, 0.f, 1.f });
+        rcfg.cameras[0].rotation = Quat::angleAxis(0.1f, { 1.f, 0.f, 1.f });
 
         rcfg.worlds = (Sim::WorldInit *)malloc(num_worlds * sizeof(Sim::WorldInit));
 
@@ -143,7 +165,7 @@ int main(int argc, char *argv[])
             print_ptr = nullptr;
 #endif
 
-            char *raycast_tensor = (char *)(mgr.rgbTensor().devicePtr());
+            char *raycast_tensor = (char *)(mgr.segmaskTensor().devicePtr());
 
             uint32_t bytes_per_image = 4 * output_resolution * output_resolution;
 
@@ -182,11 +204,18 @@ int main(int argc, char *argv[])
                             uint32_t linear_idx = 4 * 
                                 (j + (i + linear_image_idx * output_resolution) * output_resolution);
 
+                            int32_t object_idx = *(int32_t *)(raycasters + linear_idx);
+
+                            // +1 for the "no object" which is -1.
+                            auto realColor = kRandomColorTable[object_idx + 1];
+
+#if 0
                             auto realColor = IM_COL32(
                                     (uint8_t)raycasters[linear_idx + 0],
                                     (uint8_t)raycasters[linear_idx + 1],
                                     (uint8_t)raycasters[linear_idx + 2],
                                     255);
+#endif
 
                             draw2->AddRectFilled(
                                     { ((i + image_y * output_resolution) * pixScale) + windowPos.x, 

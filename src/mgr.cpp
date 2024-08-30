@@ -468,6 +468,22 @@ Tensor Manager::depthTensor() const
     }
 }
 
+Tensor Manager::segmaskTensor() const
+{
+    if (impl_->cfg.renderMode == RenderMode::Rasterizer) {
+        FATAL("Segmask not implemented for rasterizer");
+    } else {
+        uint32_t pixels_per_view = impl_->raycastOutputResolution *
+            impl_->raycastOutputResolution;
+        return impl_->exportTensor(ExportID::RaycastSegmask,
+                                   TensorElementType::Int32,
+                                   {
+                                       impl_->totalNumCameras,
+                                       pixels_per_view,
+                                   });
+    }
+}
+
 uint64_t Manager::rgbCudaPtr() const
 {
     return (uint64_t)rgbTensor().devicePtr();
@@ -476,6 +492,11 @@ uint64_t Manager::rgbCudaPtr() const
 uint64_t Manager::depthCudaPtr() const
 {
     return (uint64_t)depthTensor().devicePtr();
+}
+
+uint64_t Manager::segmaskCudaPtr() const
+{
+    return (uint64_t)segmaskTensor().devicePtr();
 }
 
 render::RenderManager & Manager::getRenderManager()
