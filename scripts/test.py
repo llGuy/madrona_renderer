@@ -60,13 +60,18 @@ renderer = m.MadronaRenderer(
 )
 
 # Render!
-renderer.step()
-rgb_tensor = renderer.segmask_tensor().to_torch()
 
-print(rgb_tensor)
-
-cpu_tensor = rgb_tensor.cpu()
-print(cpu_tensor.shape)
-
-plt.imshow(rgb_tensor[0].transpose(0, 1).cpu())
+plt.ion()
 plt.show()
+
+positions = renderer.instance_position_tensor().to_torch()
+
+for _ in range(16):
+    positions[0][2] += 1.0
+
+    renderer.step()
+    rgb_tensor = renderer.segmask_tensor().to_torch()
+    cpu_tensor = rgb_tensor.cpu()
+
+    plt.imshow(rgb_tensor[0].transpose(0, 1).cpu())
+    plt.pause(0.1)
