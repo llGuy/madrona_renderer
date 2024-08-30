@@ -118,6 +118,7 @@ struct Manager::Impl {
 
     uint32_t raycastOutputResolution;
     bool headlessMode;
+    uint32_t totalNumCameras;
 
     inline Impl(const Manager::Config &mgr_cfg,
                 Optional<RenderGPUState> &&render_gpu_state,
@@ -127,7 +128,13 @@ struct Manager::Impl {
           renderMgr(std::move(render_mgr)),
           raycastOutputResolution(mgr_cfg.batchRenderViewWidth),
           headlessMode(mgr_cfg.headlessMode)
-    {}
+    {
+        totalNumCameras=0;
+        for (int i=0;i<mgr_cfg.numWorlds;i++)
+        {
+            totalNumCameras+=mgr_cfg.rcfg.worlds[i].numCameras;
+        }
+    }
 
     inline virtual ~Impl() {}
 
@@ -420,8 +427,7 @@ Tensor Manager::rgbTensor() const
     const uint8_t *rgb_ptr = impl_->renderMgr->batchRendererRGBOut();
 
     return Tensor((void*)rgb_ptr, TensorElementType::UInt8, {
-        impl_->cfg.numWorlds,
-        numAgents,
+        impl_->totalNumCameras,
         impl_->cfg.batchRenderViewHeight,
         impl_->cfg.batchRenderViewWidth,
         4,
@@ -430,26 +436,49 @@ Tensor Manager::rgbTensor() const
 
 Tensor Manager::depthTensor() const
 {
-    const float *depth_ptr = impl_->renderMgr->batchRendererDepthOut();
-
-    return Tensor((void *)depth_ptr, TensorElementType::Float32, {
-        impl_->cfg.numWorlds,
-        numAgents,
+    return Tensor((void *)depthCudaPtr(), TensorElementType::Float32, {
+        impl_->totalNumCameras,
         impl_->cfg.batchRenderViewHeight,
         impl_->cfg.batchRenderViewWidth,
         1,
     }, impl_->cfg.gpuID);
 }
 
-Tensor Manager::raycastTensor() const
+uint64_t Manager::rgbCudaPtr() const
+{
+    return (uint64_t) ((impl_->cfg.renderMode == Manager::RenderMode::Rasterizer)?
+    rgbTensor().devicePtr() : raycastRGBTensor().devicePtr());
+}
+
+uint64_t Manager::depthCudaPtr() const
+{
+    return (uint64_t) ((impl_->cfg.renderMode == Manager::RenderMode::Rasterizer)?
+    depthTensor().devicePtr() : raycastDepthTensor().devicePtr());
+}
+
+
+
+Tensor Manager::raycastRGBTensor() const
 {
     uint32_t pixels_per_view = impl_->raycastOutputResolution *
         impl_->raycastOutputResolution;
-    return impl_->exportTensor(ExportID::Raycast,
+    return impl_->exportTensor(ExportID::RaycastRGB,
                                TensorElementType::UInt8,
                                {
-                                   impl_->cfg.numWorlds*numAgents,
-                                   pixels_per_view * 4,
+                                   impl_->totalNumCameras,
+                                   pixels_per_view * 4, //4 components: rgba
+                               });
+}
+
+Tensor Manager::raycastDepthTensor() const
+{
+    uint32_t pixels_per_view = impl_->raycastOutputResolution *
+        impl_->raycastOutputResolution;
+    return impl_->exportTensor(ExportID::RaycastDepth,
+                               TensorElementType::Float32,
+                               {
+                                   impl_->totalNumCameras,
+                                   pixels_per_view,
                                });
 }
 

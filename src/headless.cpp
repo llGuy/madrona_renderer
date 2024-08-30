@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
     if (args.dumpOutputFile) {
         run::dumpTiledImage({
             .outputPath = args.outputFileName,
-            .gpuTensor = (void *)mgr.raycastTensor().devicePtr(),
+            .gpuTensor = (void *)mgr.raycastRGBTensor().devicePtr(),
             .numImages = (uint32_t)num_worlds,
             .imageResolution = output_resolution
         });
