@@ -52,14 +52,22 @@ void Sim::registerTypes(ECSRegistry &registry, const Config &cfg)
     registry.exportColumn<render::RaycastOutputArchetype,
                           render::RGBOutputBuffer>(
         (uint32_t)ExportID::RaycastRGB);
-
     registry.exportColumn<render::RaycastOutputArchetype,
                           render::DepthOutputBuffer>(
         (uint32_t)ExportID::RaycastDepth);
-
     registry.exportColumn<render::RaycastOutputArchetype,
                           render::SegmaskOutputBuffer>(
         (uint32_t)ExportID::RaycastSegmask);
+
+    registry.exportColumn<DummyRenderable, Position>(
+        (uint32_t)ExportID::InstancePosition);
+    registry.exportColumn<DummyRenderable, Rotation>(
+        (uint32_t)ExportID::InstanceRotation);
+
+    registry.exportColumn<Agent, Position>(
+        (uint32_t)ExportID::CameraPosition);
+    registry.exportColumn<Agent, Rotation>(
+        (uint32_t)ExportID::CameraRotation);
 }
 
 inline void timeUpdateSys(Engine &ctx,

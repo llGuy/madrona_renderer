@@ -70,31 +70,6 @@ NB_MODULE(madrona_renderer, m) {
            nb::arg("camera_offset"))
     ;
 
-#if 0
-    m.def("test_function", [](const std::vector<std::string> &asset_paths) {
-
-    });
-#endif
-
-#if 0
-    nb::class_<Manager>(m, "TestClass")
-        .def("__init__", [](Manager *self,
-                            int gpu_id,
-                            int num_worlds,
-                            Manager::RenderMode render_mode,
-                            int batch_render_view_width,
-                            int batch_render_view_height,
-                            const std::vector<std::string> &asset_paths) {
-            printf("hello!\n");
-        }, nb::arg("gpu_id"),
-           nb::arg("num_worlds"),
-           nb::arg("render_mode"),
-           nb::arg("batch_render_view_width"),
-           nb::arg("batch_render_view_height"),
-           nb::arg("asset_paths"))
-    ;
-#endif
-
 #if 1
     nb::class_<Manager>(m, "MadronaRenderer")
         .def("__init__", [](Manager *self,
@@ -107,7 +82,6 @@ NB_MODULE(madrona_renderer, m) {
                             const std::vector<ImportedInstance> &instances,
                             const std::vector<ImportedCamera> &cameras,
                             const std::vector<Sim::WorldInit> &worlds) {
-            printf("In constructor!\n");
             std::vector<const char *> cstrs;
             cstrs.resize(asset_paths.size());
             for (uint32_t i = 0; i < (uint32_t)asset_paths.size(); ++i) {
@@ -142,8 +116,14 @@ NB_MODULE(madrona_renderer, m) {
         .def("step", &Manager::step)
         .def("rgb_tensor", &Manager::rgbTensor)
         .def("depth_tensor", &Manager::depthTensor)
+        .def("segmask_tensor", &Manager::segmaskTensor)
         .def("rgb_cuda_ptr", &Manager::rgbCudaPtr)
         .def("depth_cuda_ptr", &Manager::depthCudaPtr)
+        .def("segmask_cuda_ptr", &Manager::segmaskCudaPtr)
+        .def("instance_position_tensor", &Manager::instancePositionTensor)
+        .def("instance_rotation_tensor", &Manager::instanceRotationTensor)
+        .def("camera_position_tensor", &Manager::cameraPositionTensor)
+        .def("camera_rotation_tensor", &Manager::cameraRotationTensor)
     ;
 #endif
 }

@@ -97,7 +97,13 @@ int main(int argc, char *argv[])
         rcfg.numCameras = 1;
 
         rcfg.cameras[0].position = { -30.f, -30.f, 15.f };
-        rcfg.cameras[0].rotation = Quat::angleAxis(0.1f, { 1.f, 0.f, 1.f });
+        rcfg.cameras[0].rotation = Quat::angleAxis(0.05f, { 1.f, 0.f, 1.f });
+        printf("%f %f %f %f\n",
+                rcfg.cameras[0].rotation.w,
+                rcfg.cameras[0].rotation.x,
+                rcfg.cameras[0].rotation.y,
+                rcfg.cameras[0].rotation.z
+                );
 
         rcfg.worlds = (Sim::WorldInit *)malloc(num_worlds * sizeof(Sim::WorldInit));
 

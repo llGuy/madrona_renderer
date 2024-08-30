@@ -1,3 +1,5 @@
+import torch
+import matplotlib.pyplot as plt
 import madrona_renderer as m
 
 asset_paths = [
@@ -29,12 +31,12 @@ instances = [
 cameras = [
     m.ImportedCamera(
         position=[ -30.0, -30.0, 15.0 ],
-        rotation=[ 0.0, 0.0, 0.0, 0.707107 ]
+        rotation=[ 0.999687, 0.024997, 0.000000, 0.024997 ]
     )
 ]
 
 # Make 16 worlds all with a camera rendering the same thing
-num_worlds = 16
+num_worlds = 1
 world_inits = []
 
 for _ in range(num_worlds):
@@ -44,17 +46,6 @@ for _ in range(num_worlds):
             instance_offset=0,
             num_cameras=1,
             camera_offset=0))
-
-"""
-test = m.TestClass(
-    gpu_id=0,
-    num_worlds=64,
-    render_mode=m.RenderMode.Raytracer,
-    batch_render_view_width=64,
-    batch_render_view_height=64,
-    asset_paths=asset_paths
-)
-"""
 
 renderer = m.MadronaRenderer(
     gpu_id=0,
@@ -70,8 +61,12 @@ renderer = m.MadronaRenderer(
 
 # Render!
 renderer.step()
-rgb = renderer.rgb_cuda_ptr()
-#d = renderer.depth_tensor()
+rgb_tensor = renderer.segmask_tensor().to_torch()
 
-#Wprint(rgb)
-print(dir(renderer))
+print(rgb_tensor)
+
+cpu_tensor = rgb_tensor.cpu()
+print(cpu_tensor.shape)
+
+plt.imshow(rgb_tensor[0].transpose(0, 1).cpu())
+plt.show()

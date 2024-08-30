@@ -63,6 +63,12 @@ public:
     madrona::py::Tensor depthTensor() const;
     madrona::py::Tensor segmaskTensor() const;
     
+    madrona::py::Tensor instancePositionTensor() const;
+    madrona::py::Tensor instanceRotationTensor() const;
+
+    madrona::py::Tensor cameraPositionTensor() const;
+    madrona::py::Tensor cameraRotationTensor() const;
+    
     uint64_t rgbCudaPtr() const;
     uint64_t depthCudaPtr() const;
     uint64_t segmaskCudaPtr() const;

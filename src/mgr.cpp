@@ -119,6 +119,7 @@ struct Manager::Impl {
     uint32_t raycastOutputResolution;
     bool headlessMode;
     uint32_t totalNumCameras;
+    uint32_t totalNumInstances;
 
     inline Impl(const Manager::Config &mgr_cfg,
                 Optional<RenderGPUState> &&render_gpu_state,
@@ -129,10 +130,12 @@ struct Manager::Impl {
           raycastOutputResolution(mgr_cfg.batchRenderViewWidth),
           headlessMode(mgr_cfg.headlessMode)
     {
-        totalNumCameras=0;
+        totalNumCameras = 0;
+        totalNumInstances = 0;
 
         for (int i = 0; i < mgr_cfg.numWorlds; i++) {
-            totalNumCameras+=mgr_cfg.rcfg.worlds[i].numCameras;
+            totalNumCameras += mgr_cfg.rcfg.worlds[i].numCameras;
+            totalNumInstances += mgr_cfg.rcfg.worlds[i].numInstances;
         }
     }
 
@@ -434,13 +437,13 @@ Tensor Manager::rgbTensor() const
             4,
         }, impl_->cfg.gpuID);
     } else {
-        uint32_t pixels_per_view = impl_->raycastOutputResolution *
-            impl_->raycastOutputResolution;
         return impl_->exportTensor(ExportID::RaycastRGB,
                                    TensorElementType::UInt8,
                                    {
                                        impl_->totalNumCameras,
-                                       pixels_per_view * 4, //4 components: rgba
+                                       impl_->raycastOutputResolution,
+                                       impl_->raycastOutputResolution,
+                                       4
                                    });
     }
 }
@@ -457,13 +460,12 @@ Tensor Manager::depthTensor() const
             1,
         }, impl_->cfg.gpuID);
     } else {
-        uint32_t pixels_per_view = impl_->raycastOutputResolution *
-            impl_->raycastOutputResolution;
         return impl_->exportTensor(ExportID::RaycastDepth,
                                    TensorElementType::Float32,
                                    {
                                        impl_->totalNumCameras,
-                                       pixels_per_view,
+                                       impl_->raycastOutputResolution,
+                                       impl_->raycastOutputResolution
                                    });
     }
 }
@@ -473,13 +475,12 @@ Tensor Manager::segmaskTensor() const
     if (impl_->cfg.renderMode == RenderMode::Rasterizer) {
         FATAL("Segmask not implemented for rasterizer");
     } else {
-        uint32_t pixels_per_view = impl_->raycastOutputResolution *
-            impl_->raycastOutputResolution;
         return impl_->exportTensor(ExportID::RaycastSegmask,
                                    TensorElementType::Int32,
                                    {
                                        impl_->totalNumCameras,
-                                       pixels_per_view,
+                                       impl_->raycastOutputResolution,
+                                       impl_->raycastOutputResolution
                                    });
     }
 }
@@ -502,6 +503,46 @@ uint64_t Manager::segmaskCudaPtr() const
 render::RenderManager & Manager::getRenderManager()
 {
     return *impl_->renderMgr;
+}
+
+madrona::py::Tensor Manager::instancePositionTensor() const
+{
+    return impl_->exportTensor(ExportID::InstancePosition,
+                               TensorElementType::Float32,
+                               {
+                                   impl_->totalNumInstances,
+                                   3,
+                               });
+}
+
+madrona::py::Tensor Manager::instanceRotationTensor() const
+{
+     return impl_->exportTensor(ExportID::InstanceRotation,
+                               TensorElementType::Float32,
+                               {
+                                   impl_->totalNumInstances,
+                                   4,
+                               });
+}
+
+madrona::py::Tensor Manager::cameraPositionTensor() const
+{
+     return impl_->exportTensor(ExportID::CameraPosition,
+                               TensorElementType::Float32,
+                               {
+                                   impl_->totalNumInstances,
+                                   3,
+                               });
+}
+
+madrona::py::Tensor Manager::cameraRotationTensor() const
+{
+     return impl_->exportTensor(ExportID::CameraRotation,
+                               TensorElementType::Float32,
+                               {
+                                   impl_->totalNumInstances,
+                                   4,
+                               });
 }
 
 }
