@@ -142,6 +142,8 @@ NB_MODULE(madrona_renderer, m) {
         .def("step", &Manager::step)
         .def("rgb_tensor", &Manager::rgbTensor)
         .def("depth_tensor", &Manager::depthTensor)
+        .def("rgb_cuda_ptr", &Manager::rgbCudaPtr)
+        .def("depth_cuda_ptr", &Manager::depthCudaPtr)
     ;
 #endif
 }

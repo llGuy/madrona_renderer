@@ -64,9 +64,9 @@ public:
     madrona::py::Tensor raycastRGBTensor() const;
     madrona::py::Tensor raycastDepthTensor() const;
     
-    uint64_t rgb_cuda_ptr() const;
-    uint64_t depth_cuda_ptr() const;
-    uint64_t segmask_cuda_ptr() const;
+    uint64_t rgbCudaPtr() const;
+    uint64_t depthCudaPtr() const;
+    //uint64_t segmaskCudaPtr() const;
 
     madrona::render::RenderManager & getRenderManager();
 

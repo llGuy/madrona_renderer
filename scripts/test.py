@@ -70,7 +70,7 @@ renderer = m.MadronaRenderer(
 
 # Render!
 renderer.step()
-rgb = renderer.rgb_tensor()
+rgb = renderer.rgb_cuda_ptr()
 #d = renderer.depth_tensor()
 
 #Wprint(rgb)

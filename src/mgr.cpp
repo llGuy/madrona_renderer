@@ -436,9 +436,7 @@ Tensor Manager::rgbTensor() const
 
 Tensor Manager::depthTensor() const
 {
-    const float *depth_ptr = impl_->renderMgr->batchRendererDepthOut();
-
-    return Tensor((void *)depth_ptr, TensorElementType::Float32, {
+    return Tensor((void *)depthCudaPtr(), TensorElementType::Float32, {
         impl_->totalNumCameras,
         impl_->cfg.batchRenderViewHeight,
         impl_->cfg.batchRenderViewWidth,
@@ -446,13 +444,13 @@ Tensor Manager::depthTensor() const
     }, impl_->cfg.gpuID);
 }
 
-uint64_t Manager::rgb_cuda_ptr() const
+uint64_t Manager::rgbCudaPtr() const
 {
     return (uint64_t) ((impl_->cfg.renderMode == Manager::RenderMode::Rasterizer)?
     rgbTensor().devicePtr() : raycastRGBTensor().devicePtr());
 }
 
-uint64_t Manager::depth_cuda_ptr() const
+uint64_t Manager::depthCudaPtr() const
 {
     return (uint64_t) ((impl_->cfg.renderMode == Manager::RenderMode::Rasterizer)?
     depthTensor().devicePtr() : raycastDepthTensor().devicePtr());
