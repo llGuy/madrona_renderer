@@ -61,7 +61,12 @@ public:
     // simulation state to the python bindings / PyTorch tensors (src/bindings.cpp)
     madrona::py::Tensor rgbTensor() const;
     madrona::py::Tensor depthTensor() const;
-    madrona::py::Tensor raycastTensor() const;
+    madrona::py::Tensor raycastRGBTensor() const;
+    madrona::py::Tensor raycastDepthTensor() const;
+    
+    uint64_t rgb_cuda_ptr() const;
+    uint64_t depth_cuda_ptr() const;
+    uint64_t segmask_cuda_ptr() const;
 
     madrona::render::RenderManager & getRenderManager();
 

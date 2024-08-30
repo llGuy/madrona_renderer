@@ -51,7 +51,13 @@ void Sim::registerTypes(ECSRegistry &registry, const Config &cfg)
 
     registry.exportColumn<render::RaycastOutputArchetype,
                           render::RGBOutputBuffer>(
-        (uint32_t)ExportID::Raycast);
+        (uint32_t)ExportID::RaycastRGB);
+
+    registry.exportColumn<render::RaycastOutputArchetype,
+                          render::DepthOutputBuffer>(
+        (uint32_t)ExportID::RaycastDepth);
+    
+    //todo Luc: RaycastSegmask,
 }
 
 inline void timeUpdateSys(Engine &ctx,

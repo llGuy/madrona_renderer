@@ -2,10 +2,10 @@ import madrona_renderer as m
 
 asset_paths = [
     # Cube
-    "/home/luc/Development/madrona_renderer/data/wall_render.obj",
+    "../data/wall_render.obj",
 
     # Plane
-    "/home/luc/Development/madrona_renderer/data/plane.obj"
+    "../data/plane.obj"
 ]
 
 instances = [
@@ -70,3 +70,8 @@ renderer = m.MadronaRenderer(
 
 # Render!
 renderer.step()
+rgb = renderer.rgb_tensor()
+#d = renderer.depth_tensor()
+
+#Wprint(rgb)
+print(dir(renderer))

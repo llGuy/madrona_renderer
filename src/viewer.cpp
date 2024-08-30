@@ -36,7 +36,7 @@ void transposeImage(char *output,
 int main(int argc, char *argv[])
 {
     using namespace madRender;
-
+    
     run::ViewerRunArgs args = run::parseViewerArgs(argc, argv);
 
     WindowManager wm {};
@@ -55,8 +55,8 @@ int main(int argc, char *argv[])
         rcfg.assetPaths = (const char **)malloc(2 * sizeof(const char *));
         rcfg.numAssetPaths = 2;
 
-        rcfg.assetPaths[0] = "/home/luc/Development/madrona_renderer/data/wall_render.obj";
-        rcfg.assetPaths[1] = "/home/luc/Development/madrona_renderer/data/plane.obj";
+        rcfg.assetPaths[0] = "../data/wall_render.obj";
+        rcfg.assetPaths[1] = "../data/plane.obj";
 
         rcfg.importedInstances = (ImportedInstance *)malloc(2 * sizeof(ImportedInstance));
         rcfg.numInstances = 2;
@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
             print_ptr = nullptr;
 #endif
 
-            char *raycast_tensor = (char *)(mgr.raycastTensor().devicePtr());
+            char *raycast_tensor = (char *)(mgr.raycastRGBTensor().devicePtr());
 
             uint32_t bytes_per_image = 4 * output_resolution * output_resolution;
 
