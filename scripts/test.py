@@ -45,6 +45,17 @@ for _ in range(num_worlds):
             num_cameras=1,
             camera_offset=0))
 
+"""
+test = m.TestClass(
+    gpu_id=0,
+    num_worlds=64,
+    render_mode=m.RenderMode.Raytracer,
+    batch_render_view_width=64,
+    batch_render_view_height=64,
+    asset_paths=asset_paths
+)
+"""
+
 renderer = m.MadronaRenderer(
     gpu_id=0,
     num_worlds=num_worlds,

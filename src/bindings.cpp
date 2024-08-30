@@ -5,6 +5,7 @@
 
 #include <nanobind/stl/array.h>
 #include <nanobind/stl/vector.h>
+#include <nanobind/stl/string.h>
 
 using namespace madrona;
 using namespace madrona::math;
@@ -69,17 +70,44 @@ NB_MODULE(madrona_renderer, m) {
            nb::arg("camera_offset"))
     ;
 
+#if 0
+    m.def("test_function", [](const std::vector<std::string> &asset_paths) {
+
+    });
+#endif
+
+#if 0
+    nb::class_<Manager>(m, "TestClass")
+        .def("__init__", [](Manager *self,
+                            int gpu_id,
+                            int num_worlds,
+                            Manager::RenderMode render_mode,
+                            int batch_render_view_width,
+                            int batch_render_view_height,
+                            const std::vector<std::string> &asset_paths) {
+            printf("hello!\n");
+        }, nb::arg("gpu_id"),
+           nb::arg("num_worlds"),
+           nb::arg("render_mode"),
+           nb::arg("batch_render_view_width"),
+           nb::arg("batch_render_view_height"),
+           nb::arg("asset_paths"))
+    ;
+#endif
+
+#if 1
     nb::class_<Manager>(m, "MadronaRenderer")
         .def("__init__", [](Manager *self,
-                            int64_t gpu_id,
-                            int64_t num_worlds,
+                            int gpu_id,
+                            int num_worlds,
                             Manager::RenderMode render_mode,
-                            int64_t batch_render_view_width,
-                            int64_t batch_render_view_height,
+                            int batch_render_view_width,
+                            int batch_render_view_height,
                             const std::vector<std::string> &asset_paths,
                             const std::vector<ImportedInstance> &instances,
                             const std::vector<ImportedCamera> &cameras,
                             const std::vector<Sim::WorldInit> &worlds) {
+            printf("In constructor!\n");
             std::vector<const char *> cstrs;
             cstrs.resize(asset_paths.size());
             for (uint32_t i = 0; i < (uint32_t)asset_paths.size(); ++i) {
@@ -115,6 +143,7 @@ NB_MODULE(madrona_renderer, m) {
         .def("rgb_tensor", &Manager::rgbTensor)
         .def("depth_tensor", &Manager::depthTensor)
     ;
+#endif
 }
 
 }
