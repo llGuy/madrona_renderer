@@ -1,6 +1,7 @@
 import torch
 import matplotlib.pyplot as plt
 import madrona_renderer as m
+import math
 
 asset_paths = [
     # Cube
@@ -36,7 +37,7 @@ cameras = [
 ]
 
 # Make 16 worlds all with a camera rendering the same thing
-num_worlds = 1
+num_worlds = 4
 world_inits = []
 
 for _ in range(num_worlds):
@@ -66,12 +67,28 @@ plt.show()
 
 positions = renderer.instance_position_tensor().to_torch()
 
-for _ in range(16):
+grid_height = math.ceil(math.sqrt(num_worlds))
+grid_width = math.ceil(num_worlds / grid_height)
+
+fig, axes = plt.subplots(grid_width, grid_height, figsize=(10, 10))
+
+for _ in range(32):
     positions[0][2] += 1.0
+    positions[1][2] += 2.0
+    positions[2][2] += 1.5
+    positions[3][2] += 0.5
 
     renderer.step()
-    rgb_tensor = renderer.segmask_tensor().to_torch()
-    cpu_tensor = rgb_tensor.cpu()
+    segmask_tensor = renderer.segmask_tensor().to_torch()
+    cpu_tensor = segmask_tensor.cpu()
 
-    plt.imshow(rgb_tensor[0].transpose(0, 1).cpu())
+    for y in range(grid_height):
+        for x in range(grid_width):
+            image_idx = x + y * grid_width
+
+            if image_idx < num_worlds:
+                ax = axes[x, y]
+                ax.imshow(cpu_tensor[image_idx].transpose(0, 1))
+                ax.axis('off')
+
     plt.pause(0.1)
