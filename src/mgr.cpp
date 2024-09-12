@@ -214,8 +214,16 @@ static Optional<imp::SourceTexture> ktxImageImportFn(
 static imp::ImportedAssets loadRenderObjects(
         const char **paths,
         uint32_t num_paths,
+        int32_t *mat_assignments,
+        uint32_t num_mat_assignments,
+        const AdditionalMaterial *additional_mats,
+        uint32_t num_additional_mats,
+        const char **additional_textures,
+        uint32_t num_additional_textures,
         Optional<render::RenderManager> &render_mgr)
 {
+    using namespace madrona::imp;
+
     std::vector<const char *> render_asset_cstrs;
     render_asset_cstrs.resize(num_paths);
     memcpy(render_asset_cstrs.data(), paths, 
@@ -234,6 +242,40 @@ static imp::ImportedAssets loadRenderObjects(
 
     if (!render_assets.has_value()) {
         FATAL("Failed to load render assets: %s", import_err);
+    }
+
+    // Push the additional textures
+    uint32_t old_tex_count = (uint32_t)render_assets->textures.size();
+    for (int i = 0; i < num_additional_textures; ++i) {
+        Optional<SourceTexture> tex = img_importer.importImage(
+                additional_textures[i]);
+        assert(tex.has_value());
+
+        render_assets->textures.push_back(*tex);
+    }
+
+    uint32_t old_mat_count = 
+        (uint32_t)render_assets->materials.size();
+
+    // Push the additional materials
+    for (int i = 0; i < num_additional_mats; ++i) {
+        SourceMaterial mat = additional_mats[i];
+        if (mat.textureIdx != -1) {
+            // Adjust the ID of the texture
+            mat.textureIdx += old_tex_count;
+        }
+
+        render_assets->materials.push_back(mat);
+    }
+
+    // Now, do all the material assignments
+    // TODO: Make sure to take into account multiple objects per asset_ file
+    for (int i = 0; i < num_mat_assignments; ++i) {
+        if (mat_assignments[i] != -1) {
+            for (auto &mesh : render_assets->objects[i].meshes) {
+                mesh.materialIDX = mat_assignments[i] + old_mat_count;
+            }
+        }
     }
 
     if (render_mgr.has_value()) {
@@ -283,6 +325,12 @@ Manager::Impl * Manager::Impl::init(
     auto imported_assets = loadRenderObjects(
             mgr_cfg.rcfg.assetPaths,
             mgr_cfg.rcfg.numAssetPaths,
+            mgr_cfg.rcfg.matAssignments,
+            mgr_cfg.rcfg.numMatAssignments,
+            mgr_cfg.rcfg.additionalMats,
+            mgr_cfg.rcfg.numAdditionalMats,
+            mgr_cfg.rcfg.additionalTextures,
+            mgr_cfg.rcfg.numAdditionalTextures,
             render_mgr);
 
     // Allocate GPU memory for the instances

@@ -5,9 +5,20 @@
 #include <madrona/py/utils.hpp>
 #include <madrona/exec_mode.hpp>
 
+#include <madrona/importer.hpp>
 #include <madrona/render/render_mgr.hpp>
 
 namespace madRender {
+
+// Additional materials / textures / ...
+using AdditionalMaterial = madrona::imp::SourceMaterial;
+
+struct ImportedAsset {
+    std::string path;
+
+    // Optional
+    int32_t matID;
+};
 
 // The Manager class encapsulates the linkage between the outside training
 // code and the internal simulation state (src/sim.hpp / src/sim.cpp)
@@ -41,6 +52,15 @@ public:
         struct RenderConfig {
             const char **assetPaths;
             uint32_t numAssetPaths;
+
+            int32_t *matAssignments;
+            uint32_t numMatAssignments;
+
+            const AdditionalMaterial *additionalMats;
+            uint32_t numAdditionalMats;
+
+            const char **additionalTextures;
+            uint32_t numAdditionalTextures;
 
             ImportedInstance *importedInstances;
             uint32_t numInstances;

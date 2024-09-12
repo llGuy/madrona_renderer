@@ -6,6 +6,7 @@
 #include <nanobind/stl/array.h>
 #include <nanobind/stl/vector.h>
 #include <nanobind/stl/string.h>
+#include <nanobind/stl/optional.h>
 
 using namespace madrona;
 using namespace madrona::math;
@@ -20,6 +21,37 @@ NB_MODULE(madrona_renderer, m) {
     nb::enum_<Manager::RenderMode>(m, "RenderMode")
         .value("Rasterizer", Manager::RenderMode::Rasterizer)
         .value("Raytracer", Manager::RenderMode::Raytracer)
+    ;
+
+    nb::class_<ImportedInstance>(m, "ImportedAsset")
+        .def("__init__", [](ImportedAsset *self,
+                            std::string path,
+                            std::optional<int64_t> mat_id) {
+            new (self) ImportedAsset {
+                .path = path,
+                .matID = mat_id.has_value() ? (int32_t)mat_id.value() : -1,
+            };
+        }, nb::arg("path"),
+           nb::arg("mat_id") = nb::none())
+    ;
+
+    nb::class_<ImportedInstance>(m, "AdditionalMaterial")
+        .def("__init__", [](ImportedAsset *self,
+                            const std::array<float, 4> &color,
+                            std::optional<int64_t> texture_id,
+                            float roughness,
+                            float metalness) {
+            new (self) AdditionalMaterial {
+                .color = Vector4{ color[0], color[1], color[2], color[3] },
+                .textureIdx = texture_id.has_value() ? 
+                (int32_t)texture_id.value() : -1,
+                .roughness = roughness,
+                .metalness = metalness,
+            };
+        }, nb::arg("color"),
+           nb::arg("texture_id") = nb::none(),
+           nb::arg("roughness"),
+           nb::arg("metalness"))
     ;
 
     nb::class_<ImportedInstance>(m, "ImportedInstance")
@@ -78,14 +110,27 @@ NB_MODULE(madrona_renderer, m) {
                             Manager::RenderMode render_mode,
                             int batch_render_view_width,
                             int batch_render_view_height,
-                            const std::vector<std::string> &asset_paths,
+                            const std::vector<ImportedAsset> &asset_paths,
+                            const std::vector<AdditionalMaterial> &mats,
+                            const std::vector<std::string> &texture_paths,
                             const std::vector<ImportedInstance> &instances,
                             const std::vector<ImportedCamera> &cameras,
                             const std::vector<Sim::WorldInit> &worlds) {
             std::vector<const char *> cstrs;
+            std::vector<int32_t> mat_assignments;
+
             cstrs.resize(asset_paths.size());
+            mat_assignments.resize(asset_paths.size());
+
             for (uint32_t i = 0; i < (uint32_t)asset_paths.size(); ++i) {
-                cstrs[i] = asset_paths[i].c_str();
+                cstrs[i] = asset_paths[i].path.c_str();
+                mat_assignments[i] = asset_paths[i].matID;
+            }
+
+            std::vector<const char *> texture_cstrs;
+
+            for (uint32_t i = 0; i < (uint32_t)texture_paths.size(); ++i) {
+                texture_cstrs[i] = texture_paths[i].c_str();
             }
 
             new (self) Manager(Manager::Config {
@@ -97,6 +142,12 @@ NB_MODULE(madrona_renderer, m) {
                 .rcfg = {
                     .assetPaths = cstrs.data(),
                     .numAssetPaths = (uint32_t)cstrs.size(),
+                    .matAssignments = mat_assignments.data(),
+                    .numMatAssignments = (uint32_t)mat_assignments.size(),
+                    .additionalMats = mats.data(),
+                    .numAdditionalMats = (uint32_t)mats.size(),
+                    .additionalTextures = texture_cstrs.data(),
+                    .numAdditionalTextures = (uint32_t)texture_paths.size(),
                     .importedInstances = (ImportedInstance *)instances.data(),
                     .numInstances = (uint32_t)instances.size(),
                     .cameras = (ImportedCamera *)cameras.data(),
@@ -110,6 +161,8 @@ NB_MODULE(madrona_renderer, m) {
            nb::arg("batch_render_view_width"),
            nb::arg("batch_render_view_height"),
            nb::arg("asset_paths"),
+           nb::arg("materials"),
+           nb::arg("texture_paths"),
            nb::arg("instances"),
            nb::arg("cameras"),
            nb::arg("worlds"))
