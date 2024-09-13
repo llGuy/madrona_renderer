@@ -5,10 +5,31 @@ import math
 
 asset_paths = [
     # Cube
-    "../data/wall_render.obj",
+    m.ImportedAsset(
+        path="../data/cube.obj",
+        mat_id=0
+    ),
 
     # Plane
-    "../data/plane.obj"
+    m.ImportedAsset(
+        "../data/plane.obj",
+
+        # No material
+        mat_id=-1
+    )
+]
+
+additional_mats = [
+    m.AdditionalMaterial(
+        color=[ 1, 1, 1, 1 ],
+        texture_id=0,
+        roughness=0.8,
+        metalness=0.2
+    )
+]
+
+texture_paths = [
+    "../data/cube.png"
 ]
 
 instances = [
@@ -31,8 +52,8 @@ instances = [
 
 cameras = [
     m.ImportedCamera(
-        position=[ -30.0, -30.0, 15.0 ],
-        rotation=[ 0.999687, 0.024997, 0.000000, 0.024997 ]
+        position=[-22.343935, -21.845375, 27.061676],
+        rotation=[0.913407, -0.112268, 0.047731, -0.388336]
     )
 ]
 
@@ -56,6 +77,8 @@ renderer = m.MadronaRenderer(
     batch_render_view_height=64,
     asset_paths=asset_paths,
     instances=instances,
+    materials=additional_mats,
+    texture_paths=texture_paths,
     cameras=cameras,
     worlds=world_inits
 )
@@ -79,7 +102,7 @@ for _ in range(32):
     positions[3][2] += 0.5
 
     renderer.step()
-    segmask_tensor = renderer.segmask_tensor().to_torch()
+    segmask_tensor = renderer.rgb_tensor().to_torch()
     cpu_tensor = segmask_tensor.cpu()
 
     for y in range(grid_height):

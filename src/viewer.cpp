@@ -115,8 +115,8 @@ int main(int argc, char *argv[])
         rcfg.cameras = (ImportedCamera *)malloc(1 * sizeof(ImportedCamera));
         rcfg.numCameras = 1;
 
-        rcfg.cameras[0].position = { -30.f, -30.f, 15.f };
-        rcfg.cameras[0].rotation = Quat::angleAxis(0.05f, { 1.f, 0.f, 1.f });
+        rcfg.cameras[0].position = {-22.343935, -21.845375, 27.061676};
+        rcfg.cameras[0].rotation = {0.913407, -0.112268, 0.047731, -0.388336};
         printf("%f %f %f %f\n",
                 rcfg.cameras[0].rotation.w,
                 rcfg.cameras[0].rotation.x,
