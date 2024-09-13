@@ -77,8 +77,27 @@ int main(int argc, char *argv[])
         rcfg.assetPaths = (const char **)malloc(2 * sizeof(const char *));
         rcfg.numAssetPaths = 2;
 
-        rcfg.assetPaths[0] = "../data/wall_render.obj";
+        rcfg.assetPaths[0] = "../data/cube.obj";
         rcfg.assetPaths[1] = "../data/plane.obj";
+
+        rcfg.numMatAssignments = 2;
+        rcfg.matAssignments = (int32_t *)malloc(sizeof(int32_t) * 2);
+        rcfg.matAssignments[0] = 0;
+        rcfg.matAssignments[1] = -1;
+
+        rcfg.numAdditionalMats = 1;
+        auto mats = (AdditionalMaterial *)malloc(sizeof(AdditionalMaterial));
+
+        mats[0] = AdditionalMaterial {
+            { 1, 1, 1, 1 },
+            0, 0.8f, 0.2f
+        };
+
+        rcfg.additionalMats = mats;
+
+        rcfg.numAdditionalTextures = 1;
+        rcfg.additionalTextures = (const char **)malloc(sizeof(const char *));
+        rcfg.additionalTextures[0] = "../data/cube.png";
 
         rcfg.importedInstances = (ImportedInstance *)malloc(2 * sizeof(ImportedInstance));
         rcfg.numInstances = 2;
@@ -171,7 +190,7 @@ int main(int argc, char *argv[])
             print_ptr = nullptr;
 #endif
 
-            char *raycast_tensor = (char *)(mgr.segmaskTensor().devicePtr());
+            char *raycast_tensor = (char *)(mgr.rgbTensor().devicePtr());
 
             uint32_t bytes_per_image = 4 * output_resolution * output_resolution;
 
@@ -210,12 +229,12 @@ int main(int argc, char *argv[])
                             uint32_t linear_idx = 4 * 
                                 (j + (i + linear_image_idx * output_resolution) * output_resolution);
 
-                            int32_t object_idx = *(int32_t *)(raycasters + linear_idx);
+                            // int32_t object_idx = *(int32_t *)(raycasters + linear_idx);
 
                             // +1 for the "no object" which is -1.
-                            auto realColor = kRandomColorTable[object_idx + 1];
+                            // auto realColor = kRandomColorTable[object_idx + 1];
 
-#if 0
+#if 1
                             auto realColor = IM_COL32(
                                     (uint8_t)raycasters[linear_idx + 0],
                                     (uint8_t)raycasters[linear_idx + 1],

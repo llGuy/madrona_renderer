@@ -6,7 +6,6 @@
 #include <nanobind/stl/array.h>
 #include <nanobind/stl/vector.h>
 #include <nanobind/stl/string.h>
-#include <nanobind/stl/optional.h>
 
 using namespace madrona;
 using namespace madrona::math;
@@ -23,33 +22,32 @@ NB_MODULE(madrona_renderer, m) {
         .value("Raytracer", Manager::RenderMode::Raytracer)
     ;
 
-    nb::class_<ImportedInstance>(m, "ImportedAsset")
+    nb::class_<ImportedAsset>(m, "ImportedAsset")
         .def("__init__", [](ImportedAsset *self,
                             std::string path,
-                            std::optional<int64_t> mat_id) {
+                            int64_t mat_id) {
             new (self) ImportedAsset {
                 .path = path,
-                .matID = mat_id.has_value() ? (int32_t)mat_id.value() : -1,
+                .matID = (int32_t)mat_id,
             };
         }, nb::arg("path"),
-           nb::arg("mat_id") = nb::none())
+           nb::arg("mat_id"))
     ;
 
-    nb::class_<ImportedInstance>(m, "AdditionalMaterial")
-        .def("__init__", [](ImportedAsset *self,
+    nb::class_<AdditionalMaterial>(m, "AdditionalMaterial")
+        .def("__init__", [](AdditionalMaterial *self,
                             const std::array<float, 4> &color,
-                            std::optional<int64_t> texture_id,
+                            int64_t texture_id,
                             float roughness,
                             float metalness) {
             new (self) AdditionalMaterial {
                 .color = Vector4{ color[0], color[1], color[2], color[3] },
-                .textureIdx = texture_id.has_value() ? 
-                (int32_t)texture_id.value() : -1,
+                .textureIdx = (int32_t)texture_id,
                 .roughness = roughness,
                 .metalness = metalness,
             };
         }, nb::arg("color"),
-           nb::arg("texture_id") = nb::none(),
+           nb::arg("texture_id"),
            nb::arg("roughness"),
            nb::arg("metalness"))
     ;
@@ -128,6 +126,7 @@ NB_MODULE(madrona_renderer, m) {
             }
 
             std::vector<const char *> texture_cstrs;
+            texture_cstrs.resize(texture_paths.size());
 
             for (uint32_t i = 0; i < (uint32_t)texture_paths.size(); ++i) {
                 texture_cstrs[i] = texture_paths[i].c_str();
