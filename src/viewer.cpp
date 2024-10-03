@@ -71,19 +71,53 @@ int main(int argc, char *argv[])
     uint32_t num_worlds = args.numWorlds;
 
 
+    Vector3 vertices[] = {
+        { 0.0f, 0.0f, 0.0f },
+        { 5.0f, 0.0f, 10.0f },
+        { 10.0f, 0.0f, 0.0f },
+    };
+
+    Vector2 uvs[] = {
+        { 0.0f, 0.0f },
+        { 0.0f, 0.0f },
+        { 0.0f, 0.0f },
+    };
+
+    uint32_t indices[] = {
+        0, 1, 2
+    };
+
+    uint32_t mesh_vert_offset[] = {
+        0
+    };
+
+    uint32_t mesh_index_offset[] = {
+        0
+    };
+
+    int32_t mesh_materials[] = {
+        -1
+    };
 
     Manager::Config::RenderConfig rcfg;
     { // Test this out
+        rcfg.geoCfg.vertices = vertices;
+        rcfg.geoCfg.uvs = uvs;
+        rcfg.geoCfg.indices = indices;
+        rcfg.geoCfg.meshVertexOffsets = mesh_vert_offset;
+        rcfg.geoCfg.meshIndexOffsets = mesh_index_offset;
+        rcfg.geoCfg.meshMaterials = mesh_materials;
+        rcfg.geoCfg.numVertices = 3;
+        rcfg.geoCfg.numIndices = 3;
+        rcfg.geoCfg.numMeshes = 1;
+
+#if 0
         rcfg.assetPaths = (const char **)malloc(2 * sizeof(const char *));
         rcfg.numAssetPaths = 2;
 
         rcfg.assetPaths[0] = "../data/cube.obj";
         rcfg.assetPaths[1] = "../data/plane.obj";
-
-        rcfg.numMatAssignments = 2;
-        rcfg.matAssignments = (int32_t *)malloc(sizeof(int32_t) * 2);
-        rcfg.matAssignments[0] = 0;
-        rcfg.matAssignments[1] = -1;
+#endif
 
         rcfg.numAdditionalMats = 1;
         auto mats = (AdditionalMaterial *)malloc(sizeof(AdditionalMaterial));
@@ -99,18 +133,13 @@ int main(int argc, char *argv[])
         rcfg.additionalTextures = (const char **)malloc(sizeof(const char *));
         rcfg.additionalTextures[0] = "../data/cube.png";
 
-        rcfg.importedInstances = (ImportedInstance *)malloc(2 * sizeof(ImportedInstance));
-        rcfg.numInstances = 2;
+        rcfg.importedInstances = (ImportedInstance *)malloc(1 * sizeof(ImportedInstance));
+        rcfg.numInstances = 1;
 
         rcfg.importedInstances[0].position = Vector3{ 0.f, 0.f, 15.f };
         rcfg.importedInstances[0].rotation = Quat::angleAxis(pi_d2, { 1.f, 0.f, 0.f });
         rcfg.importedInstances[0].scale = Diag3x3{ 10.f, 10.f, 10.f };
         rcfg.importedInstances[0].objectID = 0;
-
-        rcfg.importedInstances[1].position = Vector3 { 0.f, 0.f, 0.f };
-        rcfg.importedInstances[1].rotation = Quat::angleAxis(pi_d2, { 0.f, 0.f, 1.f });
-        rcfg.importedInstances[1].scale = Diag3x3{ 0.01f, 0.01f, 0.01f };
-        rcfg.importedInstances[1].objectID = 1;
 
         rcfg.cameras = (ImportedCamera *)malloc(1 * sizeof(ImportedCamera));
         rcfg.numCameras = 1;
@@ -127,7 +156,7 @@ int main(int argc, char *argv[])
         rcfg.worlds = (Sim::WorldInit *)malloc(num_worlds * sizeof(Sim::WorldInit));
 
         for (int i = 0; i < num_worlds; ++i) {
-            rcfg.worlds[i].numInstances = 2;
+            rcfg.worlds[i].numInstances = 1;
             rcfg.worlds[i].instancesOffset = 0;
             rcfg.worlds[i].numCameras = 1;
             rcfg.worlds[i].camerasOffset = 0;

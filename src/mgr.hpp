@@ -33,6 +33,19 @@ public:
         Raytracer
     };
 
+    struct GeometryConfig {
+        const madrona::math::Vector3 *vertices;
+        const madrona::math::Vector2 *uvs;
+        const uint32_t *indices;
+        const uint32_t *meshVertexOffsets;
+        const uint32_t *meshIndexOffsets;
+        const int32_t *meshMaterials;
+
+        uint32_t numVertices;
+        uint32_t numIndices;
+        uint32_t numMeshes;
+    };
+
     struct Config {
         int gpuID;
 
@@ -50,11 +63,7 @@ public:
 
         // Render config
         struct RenderConfig {
-            const char **assetPaths;
-            uint32_t numAssetPaths;
-
-            int32_t *matAssignments;
-            uint32_t numMatAssignments;
+            GeometryConfig geoCfg;
 
             const AdditionalMaterial *additionalMats;
             uint32_t numAdditionalMats;

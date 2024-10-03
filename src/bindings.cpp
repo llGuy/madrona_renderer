@@ -22,18 +22,6 @@ NB_MODULE(madrona_renderer, m) {
         .value("Raytracer", Manager::RenderMode::Raytracer)
     ;
 
-    nb::class_<ImportedAsset>(m, "ImportedAsset")
-        .def("__init__", [](ImportedAsset *self,
-                            std::string path,
-                            int64_t mat_id) {
-            new (self) ImportedAsset {
-                .path = path,
-                .matID = (int32_t)mat_id,
-            };
-        }, nb::arg("path"),
-           nb::arg("mat_id"))
-    ;
-
     nb::class_<AdditionalMaterial>(m, "AdditionalMaterial")
         .def("__init__", [](AdditionalMaterial *self,
                             const std::array<float, 4> &color,
@@ -108,22 +96,25 @@ NB_MODULE(madrona_renderer, m) {
                             Manager::RenderMode render_mode,
                             int batch_render_view_width,
                             int batch_render_view_height,
-                            const std::vector<ImportedAsset> &asset_paths,
+                            nb::ndarray<const float, nb::shape<-1, 3>,
+                                nb::device::cpu> mesh_vertices,
+                            nb::ndarray<const float, nb::shape<-1, 2>,
+                                nb::device::cpu> mesh_uvs,
+                            nb::ndarray<const uint32_t, nb::shape<-1>,
+                                nb::device::cpu> mesh_indices,
+                            nb::ndarray<const uint32_t, nb::shape<-1>,
+                                nb::device::cpu> mesh_vertex_offsets,
+                            nb::ndarray<const uint32_t, nb::shape<-1>,
+                                nb::device::cpu> mesh_indices_offsets,
+                            nb::ndarray<const int32_t, nb::shape<-1>,
+                                nb::device::cpu> mesh_materials,
                             const std::vector<AdditionalMaterial> &mats,
                             const std::vector<std::string> &texture_paths,
                             const std::vector<ImportedInstance> &instances,
                             const std::vector<ImportedCamera> &cameras,
                             const std::vector<Sim::WorldInit> &worlds) {
-            std::vector<const char *> cstrs;
-            std::vector<int32_t> mat_assignments;
-
-            cstrs.resize(asset_paths.size());
-            mat_assignments.resize(asset_paths.size());
-
-            for (uint32_t i = 0; i < (uint32_t)asset_paths.size(); ++i) {
-                cstrs[i] = asset_paths[i].path.c_str();
-                mat_assignments[i] = asset_paths[i].matID;
-            }
+            using namespace madrona;
+            using namespace madrona::math;
 
             std::vector<const char *> texture_cstrs;
             texture_cstrs.resize(texture_paths.size());
@@ -132,6 +123,20 @@ NB_MODULE(madrona_renderer, m) {
                 texture_cstrs[i] = texture_paths[i].c_str();
             }
 
+            Manager::GeometryConfig geo_cfg = {
+                .vertices = (Vector3 *)mesh_vertices.data(),
+                .uvs = (Vector2 *)mesh_uvs.data(),
+                .indices = mesh_indices.data(),
+
+                .meshVertexOffsets = mesh_vertex_offsets.data(),
+                .meshIndexOffsets = mesh_indices_offsets.data(),
+                .meshMaterials = mesh_materials.data(),
+
+                .numVertices = (uint32_t)mesh_vertices.shape(0),
+                .numIndices = (uint32_t)mesh_indices.shape(0),
+                .numMeshes = (uint32_t)mesh_vertex_offsets.shape(0),
+            };
+
             new (self) Manager(Manager::Config {
                 .gpuID = (int)gpu_id,
                 .numWorlds = (uint32_t)num_worlds,
@@ -139,10 +144,7 @@ NB_MODULE(madrona_renderer, m) {
                 .batchRenderViewWidth = (uint32_t)batch_render_view_width,
                 .batchRenderViewHeight = (uint32_t)batch_render_view_height,
                 .rcfg = {
-                    .assetPaths = cstrs.data(),
-                    .numAssetPaths = (uint32_t)cstrs.size(),
-                    .matAssignments = mat_assignments.data(),
-                    .numMatAssignments = (uint32_t)mat_assignments.size(),
+                    .geoCfg = geo_cfg,
                     .additionalMats = mats.data(),
                     .numAdditionalMats = (uint32_t)mats.size(),
                     .additionalTextures = texture_cstrs.data(),
@@ -159,7 +161,12 @@ NB_MODULE(madrona_renderer, m) {
            nb::arg("render_mode"),
            nb::arg("batch_render_view_width"),
            nb::arg("batch_render_view_height"),
-           nb::arg("asset_paths"),
+           nb::arg("mesh_vertices"),
+           nb::arg("mesh_uvs"),
+           nb::arg("mesh_indices"),
+           nb::arg("mesh_vertex_offsets"),
+           nb::arg("mesh_indices_offsets"),
+           nb::arg("mesh_materials"),
            nb::arg("materials"),
            nb::arg("texture_paths"),
            nb::arg("instances"),

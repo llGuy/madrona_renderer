@@ -211,11 +211,85 @@ static Optional<imp::SourceTexture> ktxImageImportFn(
     };
 }
 
+Optional<madrona::imp::ImportedAssets> importRawGeometry(
+        const Manager::GeometryConfig *geo_cfg)
+{
+    using namespace madrona::imp;
+
+    ImportedAssets assets {
+        .geoData = ImportedAssets::GeometryData {
+            .positionArrays { 0 },
+            .normalArrays { 0 },
+            .tangentAndSignArrays { 0 },
+            .uvArrays { 0 },
+            .indexArrays { 0 },
+            .faceCountArrays { 0 },
+            .meshArrays { 0 },
+        },
+        .objects { 0 },
+        .materials { 0 },
+        .instances { 0 },
+        .textures { 0 },
+    };
+
+    for (int i = 0; i < geo_cfg->numMeshes; ++i) {
+        uint32_t vert_offset = geo_cfg->meshVertexOffsets[i];
+        uint32_t index_offset = geo_cfg->meshIndexOffsets[i];
+        int32_t material_idx = geo_cfg->meshMaterials[i];
+
+        uint32_t vertex_count = (i < geo_cfg->numMeshes - 1) ?
+            geo_cfg->meshVertexOffsets[i + 1] - vert_offset :
+            geo_cfg->numVertices - vert_offset;
+        uint32_t index_count = (i < geo_cfg->numMeshes - 1) ?
+            geo_cfg->meshIndexOffsets[i + 1] - index_offset :
+            geo_cfg->numIndices - index_offset;
+
+        const Vector3 *src_vertices = geo_cfg->vertices + vert_offset;
+        const Vector2 *src_uvs = geo_cfg->uvs + vert_offset;
+        const uint32_t *src_indices = geo_cfg->indices + index_offset;
+
+        DynArray<math::Vector3> new_vertices(vertex_count);
+        new_vertices.resize(vertex_count, [](Vector3 *) {});
+        memcpy(new_vertices.data(), src_vertices, sizeof(Vector3) * vertex_count);
+
+        DynArray<math::Vector2> new_uvs(vertex_count);
+        memcpy(new_uvs.data(), src_uvs, sizeof(Vector2) * vertex_count);
+
+        DynArray<uint32_t> new_indices(index_count);
+        memcpy(new_indices.data(), src_indices, sizeof(uint32_t) * index_count);
+
+        DynArray<SourceMesh> mesh = {
+            SourceMesh {
+                .positions = new_vertices.data(),
+                .normals = nullptr,
+                .tangentAndSigns = nullptr,
+                .uvs = new_uvs.data(),
+                .indices = (uint32_t *)(geo_cfg->indices + index_offset),
+                .faceCounts = nullptr,
+                .faceMaterials = nullptr,
+                .numVertices = vertex_count,
+                .numFaces = index_count / 3,
+                .materialIDX = (uint32_t)material_idx
+            }
+        };
+
+        assets.geoData.meshArrays.push_back(std::move(mesh));
+
+        assets.geoData.positionArrays.push_back(std::move(new_vertices));
+        assets.geoData.uvArrays.push_back(std::move(new_uvs));
+        assets.geoData.indexArrays.push_back(std::move(new_indices));
+
+        assets.objects.push_back(SourceObject {
+            .meshes = Span<SourceMesh>(
+                    assets.geoData.meshArrays.back().data(), 1)
+        });
+    }
+
+    return assets;
+}
+
 static imp::ImportedAssets loadRenderObjects(
-        const char **paths,
-        uint32_t num_paths,
-        int32_t *mat_assignments,
-        uint32_t num_mat_assignments,
+        const Manager::GeometryConfig *geo_cfg,
         const AdditionalMaterial *additional_mats,
         uint32_t num_additional_mats,
         const char **additional_textures,
@@ -224,6 +298,7 @@ static imp::ImportedAssets loadRenderObjects(
 {
     using namespace madrona::imp;
 
+#if 0
     std::vector<const char *> render_asset_cstrs;
     render_asset_cstrs.resize(num_paths);
     memcpy(render_asset_cstrs.data(), paths, 
@@ -243,6 +318,16 @@ static imp::ImportedAssets loadRenderObjects(
     if (!render_assets.has_value()) {
         FATAL("Failed to load render assets: %s", import_err);
     }
+#endif
+
+
+    // Load all the geometry manually
+    Optional<ImportedAssets> render_assets = importRawGeometry(geo_cfg);
+
+    imp::AssetImporter importer;
+    imp::ImageImporter &img_importer = importer.imageImporter();
+    img_importer.addHandler("ktx2", ktxImageImportFn);
+
 
     // Push the additional textures
     uint32_t old_tex_count = (uint32_t)render_assets->textures.size();
@@ -268,6 +353,7 @@ static imp::ImportedAssets loadRenderObjects(
         render_assets->materials.push_back(mat);
     }
 
+#if 0
     // Now, do all the material assignments
     // TODO: Make sure to take into account multiple objects per asset_ file
     for (int i = 0; i < num_mat_assignments; ++i) {
@@ -277,6 +363,7 @@ static imp::ImportedAssets loadRenderObjects(
             }
         }
     }
+#endif
 
     if (render_mgr.has_value()) {
         render_mgr->loadObjects(render_assets->objects, 
@@ -323,10 +410,7 @@ Manager::Impl * Manager::Impl::init(
             max_views_per_world);
 
     auto imported_assets = loadRenderObjects(
-            mgr_cfg.rcfg.assetPaths,
-            mgr_cfg.rcfg.numAssetPaths,
-            mgr_cfg.rcfg.matAssignments,
-            mgr_cfg.rcfg.numMatAssignments,
+            &mgr_cfg.rcfg.geoCfg,
             mgr_cfg.rcfg.additionalMats,
             mgr_cfg.rcfg.numAdditionalMats,
             mgr_cfg.rcfg.additionalTextures,
