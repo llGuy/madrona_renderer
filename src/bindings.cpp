@@ -6,6 +6,7 @@
 #include <nanobind/stl/array.h>
 #include <nanobind/stl/vector.h>
 #include <nanobind/stl/string.h>
+#include <nanobind/ndarray.h>
 
 using namespace madrona;
 using namespace madrona::math;
@@ -88,6 +89,24 @@ NB_MODULE(madrona_renderer, m) {
            nb::arg("camera_offset"))
     ;
 
+    m.def("inspect", [](const nb::ndarray<uint32_t, nb::shape<-1>, nb::device::cpu>& a) {
+            printf("Array data pointer : %p\n", a.data());
+            printf("Array dimension : %zu\n", a.ndim());
+            for (size_t i = 0; i < a.ndim(); ++i) {
+            printf("Array dimension [%zu] : %zu\n", i, a.shape(i));
+            printf("Array stride    [%zu] : %zd\n", i, a.stride(i));
+            }
+            printf("Device ID = %u (cpu=%i, cuda=%i)\n", a.device_id(),
+                    int(a.device_type() == nb::device::cpu::value),
+                    int(a.device_type() == nb::device::cuda::value)
+                  );
+            printf("Array dtype: int16=%i, uint32=%i, float32=%i\n",
+                    a.dtype() == nb::dtype<int16_t>(),
+                    a.dtype() == nb::dtype<uint32_t>(),
+                    a.dtype() == nb::dtype<float>()
+                  );
+            });
+
 #if 1
     nb::class_<Manager>(m, "MadronaRenderer")
         .def("__init__", [](Manager *self,
@@ -96,17 +115,17 @@ NB_MODULE(madrona_renderer, m) {
                             Manager::RenderMode render_mode,
                             int batch_render_view_width,
                             int batch_render_view_height,
-                            nb::ndarray<const float, nb::shape<-1, 3>,
+                            nb::ndarray<float, nb::shape<-1, 3>,
                                 nb::device::cpu> mesh_vertices,
-                            nb::ndarray<const float, nb::shape<-1, 2>,
+                            nb::ndarray<float, nb::shape<-1, 2>,
                                 nb::device::cpu> mesh_uvs,
-                            nb::ndarray<const uint32_t, nb::shape<-1>,
+                            nb::ndarray<uint32_t, nb::shape<-1>,
                                 nb::device::cpu> mesh_indices,
-                            nb::ndarray<const uint32_t, nb::shape<-1>,
+                            nb::ndarray<uint32_t, nb::shape<-1>,
                                 nb::device::cpu> mesh_vertex_offsets,
-                            nb::ndarray<const uint32_t, nb::shape<-1>,
+                            nb::ndarray<uint32_t, nb::shape<-1>,
                                 nb::device::cpu> mesh_indices_offsets,
-                            nb::ndarray<const int32_t, nb::shape<-1>,
+                            nb::ndarray<int32_t, nb::shape<-1>,
                                 nb::device::cpu> mesh_materials,
                             const std::vector<AdditionalMaterial> &mats,
                             const std::vector<std::string> &texture_paths,
