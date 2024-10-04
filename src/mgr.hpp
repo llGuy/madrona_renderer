@@ -65,6 +65,12 @@ public:
         struct RenderConfig {
             GeometryConfig geoCfg;
 
+            const char **assetPaths;
+            uint32_t numAssetPaths;
+
+            int32_t *matAssignments;
+            uint32_t numMatAssignments;
+
             const AdditionalMaterial *additionalMats;
             uint32_t numAdditionalMats;
 

@@ -4,6 +4,17 @@ import madrona_renderer as m
 import math
 import numpy as np
 
+# Object indices are ordered first by the ones in the asset paths, then by
+# the ones where the vertices are specified manually.
+# So the cube would have object ID 0.
+# And the triangle would have object ID 1.
+asset_paths = [
+    # Cube
+    m.ImportedAsset(
+        path="../data/cube.obj",
+        mat_id=0
+    ),
+]
 
 # The textures aren't used by this example but still work
 # and use the same API as before.
@@ -25,8 +36,15 @@ instances = [
     m.ImportedInstance(
         position=[ 0.0, 0.0, 15.0 ],
         rotation=[ 0.707107, 0.707107, 0.0, 0.0 ], # w, x, y, z
+        scale=[ 3.0, 3.0, 3.0 ],
+        object_id=0 # Cube
+    ),
+
+    m.ImportedInstance(
+        position=[ 0.0, 0.0, 15.0 ],
+        rotation=[ 0.707107, 0.707107, 0.0, 0.0 ], # w, x, y, z
         scale=[ 10.0, 10.0, 10.0 ],
-        object_id=0
+        object_id=1 # Triangle
     ),
 ]
 
@@ -43,7 +61,7 @@ world_inits = []
 for _ in range(num_worlds):
     world_inits.append(
         m.WorldInit(
-            num_instances=3,
+            num_instances=2,
             instance_offset=0,
             num_cameras=1,
             camera_offset=0))
@@ -97,6 +115,7 @@ renderer = m.MadronaRenderer(
     render_mode=m.RenderMode.Raytracer,
     batch_render_view_width=64,
     batch_render_view_height=64,
+    asset_paths=asset_paths,
     mesh_vertices=vertices,
     mesh_uvs=uvs,
     mesh_indices=indices,

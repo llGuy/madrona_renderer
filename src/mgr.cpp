@@ -211,26 +211,11 @@ static Optional<imp::SourceTexture> ktxImageImportFn(
     };
 }
 
-Optional<madrona::imp::ImportedAssets> importRawGeometry(
-        const Manager::GeometryConfig *geo_cfg)
+void importRawGeometry(
+        const Manager::GeometryConfig *geo_cfg,
+        madrona::imp::ImportedAssets &assets)
 {
     using namespace madrona::imp;
-
-    ImportedAssets assets {
-        .geoData = ImportedAssets::GeometryData {
-            .positionArrays { 0 },
-            .normalArrays { 0 },
-            .tangentAndSignArrays { 0 },
-            .uvArrays { 0 },
-            .indexArrays { 0 },
-            .faceCountArrays { 0 },
-            .meshArrays { 0 },
-        },
-        .objects { 0 },
-        .materials { 0 },
-        .instances { 0 },
-        .textures { 0 },
-    };
 
     for (int i = 0; i < geo_cfg->numMeshes; ++i) {
         uint32_t vert_offset = geo_cfg->meshVertexOffsets[i];
@@ -284,12 +269,14 @@ Optional<madrona::imp::ImportedAssets> importRawGeometry(
                     assets.geoData.meshArrays.back().data(), 1)
         });
     }
-
-    return assets;
 }
 
 static imp::ImportedAssets loadRenderObjects(
         const Manager::GeometryConfig *geo_cfg,
+        const char **paths,
+        uint32_t num_paths,
+        int32_t *mat_assignments,
+        uint32_t num_mat_assignments,
         const AdditionalMaterial *additional_mats,
         uint32_t num_additional_mats,
         const char **additional_textures,
@@ -298,7 +285,7 @@ static imp::ImportedAssets loadRenderObjects(
 {
     using namespace madrona::imp;
 
-#if 0
+#if 1
     std::vector<const char *> render_asset_cstrs;
     render_asset_cstrs.resize(num_paths);
     memcpy(render_asset_cstrs.data(), paths, 
@@ -322,11 +309,7 @@ static imp::ImportedAssets loadRenderObjects(
 
 
     // Load all the geometry manually
-    Optional<ImportedAssets> render_assets = importRawGeometry(geo_cfg);
-
-    imp::AssetImporter importer;
-    imp::ImageImporter &img_importer = importer.imageImporter();
-    img_importer.addHandler("ktx2", ktxImageImportFn);
+    importRawGeometry(geo_cfg, *render_assets);
 
 
     // Push the additional textures
@@ -411,6 +394,10 @@ Manager::Impl * Manager::Impl::init(
 
     auto imported_assets = loadRenderObjects(
             &mgr_cfg.rcfg.geoCfg,
+            mgr_cfg.rcfg.assetPaths,
+            mgr_cfg.rcfg.numAssetPaths,
+            mgr_cfg.rcfg.matAssignments,
+            mgr_cfg.rcfg.numMatAssignments,
             mgr_cfg.rcfg.additionalMats,
             mgr_cfg.rcfg.numAdditionalMats,
             mgr_cfg.rcfg.additionalTextures,
